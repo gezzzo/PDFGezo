@@ -686,3 +686,162 @@ document.addEventListener('DOMContentLoaded', () => {
     anotherBtn.addEventListener('click', resetCompress);
     tryAgainBtn.addEventListener('click', resetCompress);
 });
+
+/* ═══════════════════════════════════════════════════════════════
+   JPG to PDF — Upload images, convert to PDF, download
+   ═══════════════════════════════════════════════════════════════ */
+document.addEventListener('DOMContentLoaded', () => {
+    const workspace = document.getElementById('workspace-jpg2pdf');
+    if (!workspace) return;
+
+    const dropzone = document.getElementById('jpg2pdf-dropzone');
+    const fileInput = document.getElementById('jpg2pdfFileInput');
+    const fileListWrap = document.getElementById('jpg2pdfFileList');
+    const fileListEl = document.getElementById('jpg2pdfFiles');
+    const fileCountEl = document.getElementById('jpg2pdfFileCount');
+    const addMoreBtn = document.getElementById('jpg2pdfAddMore');
+    const convertBtn = document.getElementById('jpg2pdfBtn');
+
+    const stepUpload = document.getElementById('jpg2pdf-step-upload');
+    const stepProcess = document.getElementById('jpg2pdf-step-processing');
+    const stepDone = document.getElementById('jpg2pdf-step-done');
+    const stepError = document.getElementById('jpg2pdf-step-error');
+
+    const progressBar = document.getElementById('jpg2pdfProgressBar');
+    const progressText = document.getElementById('jpg2pdfProgressText');
+    const downloadBtn = document.getElementById('jpg2pdfDownloadBtn');
+    const anotherBtn = document.getElementById('jpg2pdfAnotherBtn');
+    const tryAgainBtn = document.getElementById('jpg2pdfTryAgainBtn');
+    const errorText = document.getElementById('jpg2pdfErrorText');
+
+    let files = [];
+
+    function formatBytes(b) {
+        if (b < 1024) return b + ' B';
+        if (b < 1048576) return (b / 1024).toFixed(1) + ' KB';
+        return (b / 1048576).toFixed(1) + ' MB';
+    }
+
+    function showStep(s) {
+        [stepUpload, stepProcess, stepDone, stepError].forEach(el => el.classList.remove('active'));
+        s.classList.add('active');
+    }
+
+    const allowedExts = ['.jpg', '.jpeg', '.png', '.webp'];
+    function isImage(f) {
+        const ext = f.name.substring(f.name.lastIndexOf('.')).toLowerCase();
+        return allowedExts.includes(ext);
+    }
+
+    function addFiles(newFiles) {
+        for (const f of newFiles) {
+            if (isImage(f) && f.size <= 50 * 1024 * 1024) files.push(f);
+        }
+        renderList();
+    }
+
+    function renderList() {
+        if (files.length === 0) {
+            fileListWrap.style.display = 'none';
+            convertBtn.style.display = 'none';
+            dropzone.style.display = 'block';
+            return;
+        }
+        dropzone.style.display = 'none';
+        fileListWrap.style.display = 'block';
+        convertBtn.style.display = 'flex';
+        fileCountEl.textContent = files.length;
+
+        fileListEl.innerHTML = '';
+        files.forEach((f, i) => {
+            const li = document.createElement('li');
+            li.className = 'merge-file-item';
+            li.innerHTML = `
+                <div class="merge-file-info">
+                    <span class="merge-file-name">${f.name}</span>
+                    <span class="merge-file-size">${formatBytes(f.size)}</span>
+                </div>
+                <button class="merge-file-remove" data-index="${i}" title="Remove">&times;</button>
+            `;
+            fileListEl.appendChild(li);
+        });
+
+        fileListEl.querySelectorAll('.merge-file-remove').forEach(btn => {
+            btn.addEventListener('click', () => {
+                files.splice(parseInt(btn.dataset.index), 1);
+                renderList();
+            });
+        });
+    }
+
+    function resetJpg() {
+        files = [];
+        fileInput.value = '';
+        fileListWrap.style.display = 'none';
+        convertBtn.style.display = 'none';
+        dropzone.style.display = 'block';
+        showStep(stepUpload);
+    }
+
+    // Drag & drop
+    dropzone.addEventListener('dragover', e => { e.preventDefault(); dropzone.classList.add('dragover'); });
+    dropzone.addEventListener('dragleave', () => dropzone.classList.remove('dragover'));
+    dropzone.addEventListener('drop', e => {
+        e.preventDefault(); dropzone.classList.remove('dragover');
+        addFiles(e.dataTransfer.files);
+    });
+    dropzone.addEventListener('click', e => {
+        if (e.target.closest('#jpg2pdfSelectBtn')) return;
+        fileInput.click();
+    });
+    fileInput.addEventListener('change', () => { addFiles(fileInput.files); fileInput.value = ''; });
+    addMoreBtn.addEventListener('click', () => fileInput.click());
+
+    // Convert action
+    convertBtn.addEventListener('click', () => {
+        if (!files.length) return;
+        showStep(stepProcess);
+        progressBar.style.width = '0%';
+        progressText.textContent = 'Uploading…';
+
+        const fd = new FormData();
+        files.forEach(f => fd.append('files', f));
+
+        const xhr = new XMLHttpRequest();
+        xhr.open('POST', '/api/jpg-to-pdf');
+        xhr.responseType = 'blob';
+
+        xhr.upload.addEventListener('progress', e => {
+            if (e.lengthComputable) {
+                const pct = Math.round((e.loaded / e.total) * 100);
+                progressBar.style.width = pct + '%';
+                progressText.textContent = `Uploading… ${pct}%`;
+            }
+        });
+        xhr.upload.addEventListener('load', () => {
+            progressBar.style.width = '100%';
+            progressText.textContent = 'Converting images…';
+        });
+        xhr.addEventListener('load', () => {
+            if (xhr.status === 200) {
+                const url = URL.createObjectURL(xhr.response);
+                downloadBtn.href = url;
+                downloadBtn.download = 'images_converted.pdf';
+                showStep(stepDone);
+            } else {
+                const reader = new FileReader();
+                reader.onload = () => {
+                    try { errorText.textContent = JSON.parse(reader.result).error; }
+                    catch { errorText.textContent = 'An error occurred.'; }
+                };
+                reader.readAsText(xhr.response);
+                showStep(stepError);
+            }
+        });
+        xhr.addEventListener('error', () => { errorText.textContent = 'Network error.'; showStep(stepError); });
+        xhr.send(fd);
+    });
+
+    anotherBtn.addEventListener('click', resetJpg);
+    tryAgainBtn.addEventListener('click', resetJpg);
+});

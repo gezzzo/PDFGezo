@@ -43,6 +43,11 @@ def compress_pdf_page():
     return render_template('compress_pdf.html')
 
 
+@app.route('/jpg-to-pdf')
+def jpg_to_pdf_page():
+    return render_template('jpg_to_pdf.html')
+
+
 # ─── API ──────────────────────────────────────────────────────────────
 @app.route('/api/pdf-to-images', methods=['POST'])
 def api_pdf_to_images():
@@ -319,6 +324,67 @@ def api_compress_pdf():
         shutil.rmtree(job_upload, ignore_errors=True)
         shutil.rmtree(job_output, ignore_errors=True)
         return jsonify({'error': 'Compression timed out. Try a smaller file.'}), 500
+    except Exception as e:
+        shutil.rmtree(job_upload, ignore_errors=True)
+        shutil.rmtree(job_output, ignore_errors=True)
+        return jsonify({'error': str(e)}), 500
+
+
+# ─── JPG to PDF API ──────────────────────────────────────────────────
+@app.route('/api/jpg-to-pdf', methods=['POST'])
+def api_jpg_to_pdf():
+    files = request.files.getlist('files')
+    if not files or len(files) < 1:
+        return jsonify({'error': 'Please upload at least 1 image.'}), 400
+
+    allowed_ext = {'.jpg', '.jpeg', '.png', '.webp'}
+    for f in files:
+        ext = os.path.splitext(f.filename)[0]
+        if os.path.splitext(f.filename)[1].lower() not in allowed_ext:
+            return jsonify({'error': f'File "{f.filename}" is not a supported image (JPG, PNG, WEBP).'}), 400
+
+    job_id = str(uuid.uuid4())
+    job_upload = os.path.join(UPLOAD_DIR, job_id)
+    job_output = os.path.join(OUTPUT_DIR, job_id)
+    os.makedirs(job_upload, exist_ok=True)
+    os.makedirs(job_output, exist_ok=True)
+
+    try:
+        from PIL import Image
+
+        images = []
+        for f in files:
+            path = os.path.join(job_upload, f.filename)
+            f.save(path)
+            img = Image.open(path)
+            if img.mode in ('RGBA', 'P', 'LA'):
+                img = img.convert('RGB')
+            elif img.mode != 'RGB':
+                img = img.convert('RGB')
+            images.append(img)
+
+        out_name = 'images_converted.pdf'
+        out_path = os.path.join(job_output, out_name)
+
+        if len(images) == 1:
+            images[0].save(out_path, 'PDF')
+        else:
+            images[0].save(out_path, 'PDF', save_all=True, append_images=images[1:])
+
+        response = send_file(
+            out_path,
+            mimetype='application/pdf',
+            as_attachment=True,
+            download_name=out_name
+        )
+
+        @response.call_on_close
+        def _cleanup():
+            shutil.rmtree(job_upload, ignore_errors=True)
+            shutil.rmtree(job_output, ignore_errors=True)
+
+        return response
+
     except Exception as e:
         shutil.rmtree(job_upload, ignore_errors=True)
         shutil.rmtree(job_output, ignore_errors=True)

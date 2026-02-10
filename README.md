@@ -14,11 +14,12 @@ Free online PDF toolkit built with **Python Flask**. Convert, split, merge, and 
 | **Merge PDF** | Combine multiple PDFs into a single document (drag to reorder) |
 | **Split PDF** | Extract specific pages or page ranges into a new PDF |
 | **Compress PDF** | Reduce file size using Ghostscript with 3 quality presets |
+| **JPG to PDF** | Convert images (JPG, PNG, WEBP) into a PDF document |
 
 ## Tech Stack
 
 - **Backend:** Python 3, Flask
-- **PDF Processing:** PyPDF2, pdf2image (Poppler), Ghostscript
+- **PDF Processing:** PyPDF2, pdf2image (Poppler), Ghostscript, Pillow
 - **Frontend:** Vanilla HTML/CSS/JS with glassmorphism dark theme
 - **Fonts:** Inter (Google Fonts)
 
@@ -77,7 +78,8 @@ PDFGezo/
 │   ├── pdf_to_images.html  # PDF to Images tool
 │   ├── merge_pdf.html      # Merge PDF tool
 │   ├── split_pdf.html      # Split PDF tool
-│   └── compress_pdf.html   # Compress PDF tool
+│   ├── compress_pdf.html   # Compress PDF tool
+│   └── jpg_to_pdf.html     # JPG to PDF tool
 ├── uploads/                # Temporary upload storage (gitignored)
 └── outputs/                # Temporary output storage (gitignored)
 ```
@@ -90,6 +92,7 @@ PDFGezo/
 | `POST` | `/api/merge-pdf` | Merge multiple PDFs into one |
 | `POST` | `/api/split-pdf` | Extract pages by range (e.g. `1-3,5,8-10`) |
 | `POST` | `/api/compress-pdf` | Compress PDF with quality presets |
+| `POST` | `/api/jpg-to-pdf` | Convert images to PDF |
 | `POST` | `/api/pdf-page-count` | Get total page count of a PDF |
 
 ## License

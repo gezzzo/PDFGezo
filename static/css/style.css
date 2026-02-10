@@ -308,6 +308,11 @@ a {
     color: var(--accent-2);
 }
 
+.tool-icon-orange {
+    background: rgba(249, 115, 22, 0.15);
+    color: #f97316;
+}
+
 .tool-name {
     font-size: 1.05rem;
     font-weight: 700;
