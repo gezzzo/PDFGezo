@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════════════
-   PdfGezo — Frontend Logic
+   PDFGezo — Frontend Logic
    Handles drag-and-drop, file upload, and conversion flow
    ═══════════════════════════════════════════════════════════════ */
 

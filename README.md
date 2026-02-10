@@ -1,8 +1,8 @@
-# PdfGezo
+# PDFGezo
 
 Free online PDF toolkit built with **Python Flask**. Convert, split, merge, and compress your PDF documents — right in your browser.
 
-![PdfGezo](https://img.shields.io/badge/Python-3.9+-blue) ![Flask](https://img.shields.io/badge/Flask-3.1-green) ![License](https://img.shields.io/badge/License-MIT-yellow)
+![PDFGezo](https://img.shields.io/badge/Python-3.9+-blue) ![Flask](https://img.shields.io/badge/Flask-3.1-green) ![License](https://img.shields.io/badge/License-MIT-yellow)
 
 ---
 
@@ -39,8 +39,8 @@ brew install poppler ghostscript
 
 ```bash
 # Clone the repo
-git clone https://github.com/gezzzo/PdfGezo.git
-cd PdfGezo
+git clone https://github.com/gezzzo/PDFGezo.git
+cd PDFGezo
 
 # Create virtual environment
 python3 -m venv venv
@@ -65,7 +65,7 @@ The app will be available at **http://127.0.0.1:5000**
 ## Project Structure
 
 ```
-PdfGezo/
+PDFGezo/
 ├── app.py                  # Flask app with all routes & APIs
 ├── requirements.txt        # Python dependencies
 ├── static/
