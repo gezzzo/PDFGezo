@@ -1,0 +1,126 @@
+{% extends "base.html" %}
+
+{% block title %}Split PDF — PdfGezo{% endblock %}
+
+{% block content %}
+<section class="tool-hero">
+    <div class="container">
+        <h1 class="tool-hero-title">
+            <span class="gradient-text">Split PDF</span>
+        </h1>
+        <p class="tool-hero-subtitle">Extract specific pages or page ranges from your PDF into a new file.</p>
+    </div>
+</section>
+
+<section class="tool-workspace">
+    <div class="container">
+        <div class="workspace-card" id="workspace-split">
+
+            <!-- Step 1: Upload -->
+            <div class="step step-upload active" id="split-step-upload">
+                <div class="dropzone" id="split-dropzone">
+                    <div class="dropzone-content">
+                        <svg class="dropzone-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                            <polyline points="14 2 14 8 20 8" />
+                            <line x1="9" y1="15" x2="15" y2="15" />
+                        </svg>
+                        <p class="dropzone-text">Drag & drop your PDF here</p>
+                        <p class="dropzone-hint">or</p>
+                        <label class="btn btn-primary" for="splitFileInput" id="splitSelectBtn">
+                            Select PDF File
+                        </label>
+                        <input type="file" id="splitFileInput" accept=".pdf" hidden>
+                        <p class="dropzone-limit">Max file size: 50 MB</p>
+                    </div>
+                </div>
+
+                <!-- File info + page range input -->
+                <div class="file-info" id="splitFileInfo" style="display:none;">
+                    <div class="file-info-left">
+                        <svg class="file-info-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="1.5">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                            <polyline points="14 2 14 8 20 8" />
+                        </svg>
+                        <span class="file-name" id="splitFileName"></span>
+                        <span class="file-size" id="splitFileSize"></span>
+                    </div>
+                    <button class="btn-remove" id="splitRemoveFile" title="Remove file">✕</button>
+                </div>
+
+                <div class="split-options" id="splitOptions" style="display:none;">
+                    <div class="page-count-info" id="pageCountInfo">
+                        <span class="page-count-badge" id="pageCountBadge">Counting pages…</span>
+                    </div>
+                    <div class="option-group">
+                        <label class="option-label" for="splitRanges">Page Ranges</label>
+                        <input type="text" id="splitRanges" class="option-input" placeholder="e.g. 1-3, 5, 8-10"
+                            autocomplete="off">
+                        <p class="option-hint">Separate ranges with commas. Use hyphens for ranges.</p>
+                    </div>
+                </div>
+
+                <button class="btn btn-convert btn-split-action" id="splitBtn" style="display:none;">
+                    <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M12 3v9" />
+                        <path d="m8 8 4 4 4-4" />
+                        <path d="M8 21H3v-5" />
+                        <path d="M16 21h5v-5" />
+                    </svg>
+                    Split PDF
+                </button>
+            </div>
+
+            <!-- Step 2: Processing -->
+            <div class="step step-processing" id="split-step-processing">
+                <div class="processing-content">
+                    <div class="spinner"></div>
+                    <p class="processing-text">Splitting your PDF…</p>
+                    <div class="progress-bar-wrap">
+                        <div class="progress-bar" id="splitProgressBar"></div>
+                    </div>
+                    <p class="progress-text" id="splitProgressText">Uploading…</p>
+                </div>
+            </div>
+
+            <!-- Step 3: Done -->
+            <div class="step step-done" id="split-step-done">
+                <div class="done-content">
+                    <div class="done-check">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+                            stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="20 6 9 17 4 12" />
+                        </svg>
+                    </div>
+                    <h2 class="done-title">Your split PDF is ready!</h2>
+                    <p class="done-desc">Selected pages have been extracted successfully.</p>
+                    <a class="btn btn-download" id="splitDownloadBtn" href="#" download>
+                        <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                            stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                            <polyline points="7 10 12 15 17 10" />
+                            <line x1="12" y1="15" x2="12" y2="3" />
+                        </svg>
+                        Download Split PDF
+                    </a>
+                    <button class="btn btn-outline" id="splitAnotherBtn">Split Another PDF</button>
+                </div>
+            </div>
+
+            <!-- Error -->
+            <div class="step step-error" id="split-step-error">
+                <div class="error-content">
+                    <div class="error-icon">⚠️</div>
+                    <h2 class="error-title">Something went wrong</h2>
+                    <p class="error-desc" id="splitErrorText">An unexpected error occurred.</p>
+                    <button class="btn btn-primary" id="splitTryAgainBtn">Try Again</button>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</section>
+{% endblock %}

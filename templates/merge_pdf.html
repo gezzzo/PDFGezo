@@ -1,0 +1,122 @@
+{% extends "base.html" %}
+
+{% block title %}Merge PDF — PdfGezo{% endblock %}
+
+{% block content %}
+<section class="tool-hero">
+    <div class="container">
+        <h1 class="tool-hero-title">
+            <span class="gradient-text">Merge PDF</span>
+        </h1>
+        <p class="tool-hero-subtitle">Combine multiple PDF files into one single document — in the order you want.</p>
+    </div>
+</section>
+
+<section class="tool-workspace">
+    <div class="container">
+        <div class="workspace-card" id="workspace-merge">
+
+            <!-- Step 1: Upload -->
+            <div class="step step-upload active" id="merge-step-upload">
+                <div class="dropzone" id="merge-dropzone">
+                    <div class="dropzone-content">
+                        <svg class="dropzone-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M16 3h5v5" />
+                            <path d="M8 3H3v5" />
+                            <path d="m21 3-8.5 8.5" />
+                            <path d="M3 3l8.5 8.5" />
+                            <path d="M12 12v9" />
+                        </svg>
+                        <p class="dropzone-text">Drag & drop your PDF files here</p>
+                        <p class="dropzone-hint">or</p>
+                        <label class="btn btn-primary" for="mergeFileInput" id="mergeSelectBtn">
+                            Select PDF Files
+                        </label>
+                        <input type="file" id="mergeFileInput" accept=".pdf" multiple hidden>
+                        <p class="dropzone-limit">Select at least 2 PDFs · Max 50 MB total</p>
+                    </div>
+                </div>
+
+                <!-- File list -->
+                <div class="merge-file-list" id="mergeFileList" style="display:none;">
+                    <div class="merge-file-list-header">
+                        <h3 class="merge-file-list-title">
+                            <span id="mergeFileCount">0</span> files selected
+                        </h3>
+                        <button class="btn-add-more" id="addMoreBtn" title="Add more files">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2.5" stroke-linecap="round">
+                                <line x1="12" y1="5" x2="12" y2="19" />
+                                <line x1="5" y1="12" x2="19" y2="12" />
+                            </svg>
+                            Add More
+                        </button>
+                    </div>
+                    <p class="merge-hint">Drag items to reorder</p>
+                    <ul class="merge-files" id="mergeFiles"></ul>
+                </div>
+
+                <button class="btn btn-convert btn-merge-action" id="mergeBtn" style="display:none;">
+                    <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M16 3h5v5" />
+                        <path d="M8 3H3v5" />
+                        <path d="m21 3-8.5 8.5" />
+                        <path d="M3 3l8.5 8.5" />
+                        <path d="M12 12v9" />
+                    </svg>
+                    Merge PDFs
+                </button>
+            </div>
+
+            <!-- Step 2: Processing -->
+            <div class="step step-processing" id="merge-step-processing">
+                <div class="processing-content">
+                    <div class="spinner"></div>
+                    <p class="processing-text">Merging your PDFs…</p>
+                    <div class="progress-bar-wrap">
+                        <div class="progress-bar" id="mergeProgressBar"></div>
+                    </div>
+                    <p class="progress-text" id="mergeProgressText">Uploading…</p>
+                </div>
+            </div>
+
+            <!-- Step 3: Done -->
+            <div class="step step-done" id="merge-step-done">
+                <div class="done-content">
+                    <div class="done-check">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+                            stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="20 6 9 17 4 12" />
+                        </svg>
+                    </div>
+                    <h2 class="done-title">Your merged PDF is ready!</h2>
+                    <p class="done-desc">All files have been combined into one document.</p>
+                    <a class="btn btn-download" id="mergeDownloadBtn" href="#" download>
+                        <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                            stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                            <polyline points="7 10 12 15 17 10" />
+                            <line x1="12" y1="15" x2="12" y2="3" />
+                        </svg>
+                        Download Merged PDF
+                    </a>
+                    <button class="btn btn-outline" id="mergeAnotherBtn">Merge Another Set</button>
+                </div>
+            </div>
+
+            <!-- Error -->
+            <div class="step step-error" id="merge-step-error">
+                <div class="error-content">
+                    <div class="error-icon">⚠️</div>
+                    <h2 class="error-title">Something went wrong</h2>
+                    <p class="error-desc" id="mergeErrorText">An unexpected error occurred.</p>
+                    <button class="btn btn-primary" id="mergeTryAgainBtn">Try Again</button>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</section>
+{% endblock %}

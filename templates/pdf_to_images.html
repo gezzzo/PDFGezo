@@ -1,0 +1,132 @@
+{% extends "base.html" %}
+
+{% block title %}PDF to Images — PdfGezo{% endblock %}
+
+{% block content %}
+<section class="tool-hero">
+    <div class="container">
+        <h1 class="tool-hero-title">
+            <span class="gradient-text">PDF to Images</span>
+        </h1>
+        <p class="tool-hero-subtitle">Convert every page of your PDF into a high-quality PNG or JPG image.</p>
+    </div>
+</section>
+
+<section class="tool-workspace">
+    <div class="container">
+        <div class="workspace-card" id="workspace">
+
+            <!-- Step 1: Upload -->
+            <div class="step step-upload active" id="step-upload">
+                <div class="dropzone" id="dropzone">
+                    <div class="dropzone-content">
+                        <svg class="dropzone-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                            <polyline points="17 8 12 3 7 8" />
+                            <line x1="12" y1="3" x2="12" y2="15" />
+                        </svg>
+                        <p class="dropzone-text">Drag & drop your PDF here</p>
+                        <p class="dropzone-hint">or</p>
+                        <label class="btn btn-primary" for="fileInput" id="selectFileBtn">
+                            Select PDF File
+                        </label>
+                        <input type="file" id="fileInput" accept=".pdf" hidden>
+                        <p class="dropzone-limit">Max file size: 50 MB</p>
+                    </div>
+                </div>
+
+                <!-- Options -->
+                <div class="options-row" id="optionsRow" style="display:none;">
+                    <div class="option-group">
+                        <label class="option-label" for="dpiSelect">Quality (DPI)</label>
+                        <select id="dpiSelect" class="option-select">
+                            <option value="150">Standard (150 DPI)</option>
+                            <option value="200" selected>High (200 DPI)</option>
+                            <option value="300">Ultra (300 DPI)</option>
+                        </select>
+                    </div>
+                    <div class="option-group">
+                        <label class="option-label" for="formatSelect">Image Format</label>
+                        <select id="formatSelect" class="option-select">
+                            <option value="png" selected>PNG</option>
+                            <option value="jpg">JPG</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- File info bar -->
+                <div class="file-info" id="fileInfo" style="display:none;">
+                    <div class="file-info-left">
+                        <svg class="file-info-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="1.5">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                            <polyline points="14 2 14 8 20 8" />
+                        </svg>
+                        <span class="file-name" id="fileName"></span>
+                        <span class="file-size" id="fileSize"></span>
+                    </div>
+                    <button class="btn-remove" id="removeFile" title="Remove file">✕</button>
+                </div>
+
+                <button class="btn btn-convert" id="convertBtn" style="display:none;">
+                    <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="3" y="3" width="18" height="18" rx="2" />
+                        <circle cx="8.5" cy="8.5" r="1.5" />
+                        <path d="m21 15-5-5L5 21" />
+                    </svg>
+                    Convert to Images
+                </button>
+            </div>
+
+            <!-- Step 2: Processing -->
+            <div class="step step-processing" id="step-processing">
+                <div class="processing-content">
+                    <div class="spinner"></div>
+                    <p class="processing-text">Converting your PDF…</p>
+                    <div class="progress-bar-wrap">
+                        <div class="progress-bar" id="progressBar"></div>
+                    </div>
+                    <p class="progress-text" id="progressText">Uploading…</p>
+                </div>
+            </div>
+
+            <!-- Step 3: Done -->
+            <div class="step step-done" id="step-done">
+                <div class="done-content">
+                    <div class="done-check">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+                            stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="20 6 9 17 4 12" />
+                        </svg>
+                    </div>
+                    <h2 class="done-title">Your images are ready!</h2>
+                    <p class="done-desc">All pages have been converted successfully.</p>
+                    <a class="btn btn-download" id="downloadBtn" href="#" download>
+                        <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                            stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                            <polyline points="7 10 12 15 17 10" />
+                            <line x1="12" y1="15" x2="12" y2="3" />
+                        </svg>
+                        Download ZIP
+                    </a>
+                    <button class="btn btn-outline" id="convertAnotherBtn">Convert Another PDF</button>
+                </div>
+            </div>
+
+            <!-- Error state -->
+            <div class="step step-error" id="step-error">
+                <div class="error-content">
+                    <div class="error-icon">⚠️</div>
+                    <h2 class="error-title">Something went wrong</h2>
+                    <p class="error-desc" id="errorText">An unexpected error occurred.</p>
+                    <button class="btn btn-primary" id="tryAgainBtn">Try Again</button>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</section>
+{% endblock %}
