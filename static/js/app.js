@@ -1,12 +1,92 @@
 /* ═══════════════════════════════════════════════════════════════
    PDFGezo — Frontend Logic
-   Handles drag-and-drop, file upload, and conversion flow
    ═══════════════════════════════════════════════════════════════ */
 
 document.addEventListener('DOMContentLoaded', () => {
-    // Only run on the pdf-to-images page
+    // ─── Theme Toggle ───────────────────────────────────────────────
+    const toggleBtn = document.getElementById('theme-toggle');
+    const sunIcon = document.getElementById('icon-sun');
+    const moonIcon = document.getElementById('icon-moon');
+    const html = document.documentElement;
+
+    if (toggleBtn) {
+        // Check saved theme or default
+        const savedTheme = localStorage.getItem('theme') || 'dark';
+        if (savedTheme === 'light') {
+            html.setAttribute('data-theme', 'light');
+            if (sunIcon) sunIcon.style.display = 'none';
+            if (moonIcon) moonIcon.style.display = 'block';
+        } else {
+            html.removeAttribute('data-theme');
+            if (sunIcon) sunIcon.style.display = 'block';
+            if (moonIcon) moonIcon.style.display = 'none';
+        }
+
+        toggleBtn.addEventListener('click', () => {
+            const isLight = html.getAttribute('data-theme') === 'light';
+            if (isLight) {
+                html.removeAttribute('data-theme');
+                localStorage.setItem('theme', 'dark');
+                if (sunIcon) sunIcon.style.display = 'block';
+                if (moonIcon) moonIcon.style.display = 'none';
+            } else {
+                html.setAttribute('data-theme', 'light');
+                localStorage.setItem('theme', 'light');
+                if (sunIcon) sunIcon.style.display = 'none';
+                if (moonIcon) moonIcon.style.display = 'block';
+            }
+        });
+    }
+
+    // ─── Hamburger Menu Toggle ──────────────────────────────────────
+    const hamburger = document.getElementById('hamburger');
+    const navLinks = document.getElementById('nav-links');
+
+    if (hamburger && navLinks) {
+        hamburger.addEventListener('click', () => {
+            hamburger.classList.toggle('active');
+            navLinks.classList.toggle('open');
+        });
+
+        // Mobile dropdown toggles (click to expand)
+        const dropdownToggles = navLinks.querySelectorAll('.dropdown-toggle');
+        dropdownToggles.forEach(toggle => {
+            toggle.addEventListener('click', (e) => {
+                // Only handle on mobile
+                if (window.innerWidth <= 768) {
+                    e.preventDefault();
+                    const dropdown = toggle.closest('.nav-dropdown');
+                    dropdown.classList.toggle('open');
+                }
+            });
+        });
+
+        // Close mobile menu when clicking a nav-link (not dropdown toggle)
+        navLinks.querySelectorAll('a.nav-link, .dropdown-item').forEach(link => {
+            link.addEventListener('click', () => {
+                if (window.innerWidth <= 768) {
+                    hamburger.classList.remove('active');
+                    navLinks.classList.remove('open');
+                }
+            });
+        });
+
+        // Close menu when resizing to desktop
+        window.addEventListener('resize', () => {
+            if (window.innerWidth > 768) {
+                hamburger.classList.remove('active');
+                navLinks.classList.remove('open');
+                navLinks.querySelectorAll('.nav-dropdown.open').forEach(d => d.classList.remove('open'));
+            }
+        });
+    }
+
+    // ─── Page Specific Logic ────────────────────────────────────────
+    // Only run on the pdf-to-images page. 
+    // Other pages have their own event listeners at the bottom of this file.
     const workspace = document.getElementById('workspace');
     if (!workspace) return;
+
 
     // DOM refs
     const dropzone = document.getElementById('dropzone');
@@ -688,7 +768,7 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 /* ═══════════════════════════════════════════════════════════════
-   JPG to PDF — Upload images, convert to PDF, download
+   Images to PDF — Upload images, convert to PDF, download
    ═══════════════════════════════════════════════════════════════ */
 document.addEventListener('DOMContentLoaded', () => {
     const workspace = document.getElementById('workspace-jpg2pdf');
@@ -844,4 +924,1121 @@ document.addEventListener('DOMContentLoaded', () => {
 
     anotherBtn.addEventListener('click', resetJpg);
     tryAgainBtn.addEventListener('click', resetJpg);
+});
+
+/* ═══════════════════════════════════════════════════════════════
+   Word to PDF — Upload .doc/.docx, convert via LibreOffice, download
+   ═══════════════════════════════════════════════════════════════ */
+document.addEventListener('DOMContentLoaded', () => {
+    const workspace = document.getElementById('workspace-word2pdf');
+    if (!workspace) return;
+
+    const dropzone = document.getElementById('word2pdf-dropzone');
+    const fileInput = document.getElementById('word2pdfFileInput');
+    const fileInfo = document.getElementById('word2pdfFileInfo');
+    const fileNameEl = document.getElementById('word2pdfFileName');
+    const fileSizeEl = document.getElementById('word2pdfFileSize');
+    const removeBtn = document.getElementById('word2pdfRemoveFile');
+    const convertBtn = document.getElementById('word2pdfBtn');
+
+    const stepUpload = document.getElementById('word2pdf-step-upload');
+    const stepProcess = document.getElementById('word2pdf-step-processing');
+    const stepDone = document.getElementById('word2pdf-step-done');
+    const stepError = document.getElementById('word2pdf-step-error');
+
+    const progressBar = document.getElementById('word2pdfProgressBar');
+    const progressText = document.getElementById('word2pdfProgressText');
+    const downloadBtn = document.getElementById('word2pdfDownloadBtn');
+    const anotherBtn = document.getElementById('word2pdfAnotherBtn');
+    const tryAgainBtn = document.getElementById('word2pdfTryAgainBtn');
+    const errorText = document.getElementById('word2pdfErrorText');
+
+    let selectedFile = null;
+
+    function formatBytes(b) {
+        if (b < 1024) return b + ' B';
+        if (b < 1048576) return (b / 1024).toFixed(1) + ' KB';
+        return (b / 1048576).toFixed(1) + ' MB';
+    }
+
+    function showStep(s) {
+        [stepUpload, stepProcess, stepDone, stepError].forEach(el => el.classList.remove('active'));
+        s.classList.add('active');
+    }
+
+    function setFile(file) {
+        if (!file) return;
+        const ext = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
+        if (ext !== '.doc' && ext !== '.docx') return;
+        if (file.size > 50 * 1024 * 1024) { alert('File too large.'); return; }
+        selectedFile = file;
+        fileNameEl.textContent = file.name;
+        fileSizeEl.textContent = formatBytes(file.size);
+        fileInfo.style.display = 'flex';
+        convertBtn.style.display = 'flex';
+        dropzone.style.display = 'none';
+    }
+
+    function resetWord() {
+        selectedFile = null;
+        fileInput.value = '';
+        fileInfo.style.display = 'none';
+        convertBtn.style.display = 'none';
+        dropzone.style.display = 'block';
+        showStep(stepUpload);
+    }
+
+    // Drag & drop
+    dropzone.addEventListener('dragover', e => { e.preventDefault(); dropzone.classList.add('dragover'); });
+    dropzone.addEventListener('dragleave', () => dropzone.classList.remove('dragover'));
+    dropzone.addEventListener('drop', e => {
+        e.preventDefault(); dropzone.classList.remove('dragover');
+        if (e.dataTransfer.files.length) setFile(e.dataTransfer.files[0]);
+    });
+    dropzone.addEventListener('click', e => {
+        if (e.target.closest('#word2pdfSelectBtn')) return;
+        fileInput.click();
+    });
+    fileInput.addEventListener('change', () => { if (fileInput.files.length) setFile(fileInput.files[0]); });
+    removeBtn.addEventListener('click', resetWord);
+
+    // Convert action
+    convertBtn.addEventListener('click', () => {
+        if (!selectedFile) return;
+        showStep(stepProcess);
+        progressBar.style.width = '0%';
+        progressText.textContent = 'Uploading…';
+
+        const fd = new FormData();
+        fd.append('file', selectedFile);
+
+        const xhr = new XMLHttpRequest();
+        xhr.open('POST', '/api/word-to-pdf');
+        xhr.responseType = 'blob';
+
+        xhr.upload.addEventListener('progress', e => {
+            if (e.lengthComputable) {
+                const pct = Math.round((e.loaded / e.total) * 100);
+                progressBar.style.width = pct + '%';
+                progressText.textContent = `Uploading… ${pct}%`;
+            }
+        });
+        xhr.upload.addEventListener('load', () => {
+            progressBar.style.width = '100%';
+            progressText.textContent = 'Converting… this may take a moment';
+        });
+        xhr.addEventListener('load', () => {
+            if (xhr.status === 200) {
+                const url = URL.createObjectURL(xhr.response);
+                downloadBtn.href = url;
+                downloadBtn.download = selectedFile.name.replace(/\.(doc|docx)$/i, '.pdf');
+                showStep(stepDone);
+            } else {
+                const reader = new FileReader();
+                reader.onload = () => {
+                    try { errorText.textContent = JSON.parse(reader.result).error; }
+                    catch { errorText.textContent = 'An error occurred.'; }
+                };
+                reader.readAsText(xhr.response);
+                showStep(stepError);
+            }
+        });
+        xhr.addEventListener('error', () => { errorText.textContent = 'Network error.'; showStep(stepError); });
+        xhr.send(fd);
+    });
+
+    anotherBtn.addEventListener('click', resetWord);
+    tryAgainBtn.addEventListener('click', resetWord);
+});
+
+/* ═══════════════════════════════════════════════════════════════
+   PowerPoint to PDF — Upload .ppt/.pptx, convert via LibreOffice, download
+   ═══════════════════════════════════════════════════════════════ */
+document.addEventListener('DOMContentLoaded', () => {
+    const workspace = document.getElementById('workspace-pptx2pdf');
+    if (!workspace) return;
+
+    const dropzone = document.getElementById('pptx2pdf-dropzone');
+    const fileInput = document.getElementById('pptx2pdfFileInput');
+    const fileInfo = document.getElementById('pptx2pdfFileInfo');
+    const fileNameEl = document.getElementById('pptx2pdfFileName');
+    const fileSizeEl = document.getElementById('pptx2pdfFileSize');
+    const removeBtn = document.getElementById('pptx2pdfRemoveFile');
+    const convertBtn = document.getElementById('pptx2pdfBtn');
+
+    const stepUpload = document.getElementById('pptx2pdf-step-upload');
+    const stepProcess = document.getElementById('pptx2pdf-step-processing');
+    const stepDone = document.getElementById('pptx2pdf-step-done');
+    const stepError = document.getElementById('pptx2pdf-step-error');
+
+    const progressBar = document.getElementById('pptx2pdfProgressBar');
+    const progressText = document.getElementById('pptx2pdfProgressText');
+    const downloadBtn = document.getElementById('pptx2pdfDownloadBtn');
+    const anotherBtn = document.getElementById('pptx2pdfAnotherBtn');
+    const tryAgainBtn = document.getElementById('pptx2pdfTryAgainBtn');
+    const errorText = document.getElementById('pptx2pdfErrorText');
+
+    let selectedFile = null;
+
+    function formatBytes(b) {
+        if (b < 1024) return b + ' B';
+        if (b < 1048576) return (b / 1024).toFixed(1) + ' KB';
+        return (b / 1048576).toFixed(1) + ' MB';
+    }
+
+    function showStep(s) {
+        [stepUpload, stepProcess, stepDone, stepError].forEach(el => el.classList.remove('active'));
+        s.classList.add('active');
+    }
+
+    function setFile(file) {
+        if (!file) return;
+        const ext = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
+        if (ext !== '.ppt' && ext !== '.pptx') return;
+        if (file.size > 50 * 1024 * 1024) { alert('File too large.'); return; }
+        selectedFile = file;
+        fileNameEl.textContent = file.name;
+        fileSizeEl.textContent = formatBytes(file.size);
+        fileInfo.style.display = 'flex';
+        convertBtn.style.display = 'flex';
+        dropzone.style.display = 'none';
+    }
+
+    function resetPptx() {
+        selectedFile = null;
+        fileInput.value = '';
+        fileInfo.style.display = 'none';
+        convertBtn.style.display = 'none';
+        dropzone.style.display = 'block';
+        showStep(stepUpload);
+    }
+
+    // Drag & drop
+    dropzone.addEventListener('dragover', e => { e.preventDefault(); dropzone.classList.add('dragover'); });
+    dropzone.addEventListener('dragleave', () => dropzone.classList.remove('dragover'));
+    dropzone.addEventListener('drop', e => {
+        e.preventDefault(); dropzone.classList.remove('dragover');
+        if (e.dataTransfer.files.length) setFile(e.dataTransfer.files[0]);
+    });
+    dropzone.addEventListener('click', e => {
+        if (e.target.closest('#pptx2pdfSelectBtn')) return;
+        fileInput.click();
+    });
+    fileInput.addEventListener('change', () => { if (fileInput.files.length) setFile(fileInput.files[0]); });
+    removeBtn.addEventListener('click', resetPptx);
+
+    // Convert action
+    convertBtn.addEventListener('click', () => {
+        if (!selectedFile) return;
+        showStep(stepProcess);
+        progressBar.style.width = '0%';
+        progressText.textContent = 'Uploading…';
+
+        const fd = new FormData();
+        fd.append('file', selectedFile);
+
+        const xhr = new XMLHttpRequest();
+        xhr.open('POST', '/api/pptx-to-pdf');
+        xhr.responseType = 'blob';
+
+        xhr.upload.addEventListener('progress', e => {
+            if (e.lengthComputable) {
+                const pct = Math.round((e.loaded / e.total) * 100);
+                progressBar.style.width = pct + '%';
+                progressText.textContent = `Uploading… ${pct}%`;
+            }
+        });
+        xhr.upload.addEventListener('load', () => {
+            progressBar.style.width = '100%';
+            progressText.textContent = 'Converting… this may take a moment';
+        });
+        xhr.addEventListener('load', () => {
+            if (xhr.status === 200) {
+                const url = URL.createObjectURL(xhr.response);
+                downloadBtn.href = url;
+                downloadBtn.download = selectedFile.name.replace(/\.(ppt|pptx)$/i, '.pdf');
+                showStep(stepDone);
+            } else {
+                const reader = new FileReader();
+                reader.onload = () => {
+                    try { errorText.textContent = JSON.parse(reader.result).error; }
+                    catch { errorText.textContent = 'An error occurred.'; }
+                };
+                reader.readAsText(xhr.response);
+                showStep(stepError);
+            }
+        });
+        xhr.addEventListener('error', () => { errorText.textContent = 'Network error.'; showStep(stepError); });
+        xhr.send(fd);
+    });
+
+    anotherBtn.addEventListener('click', resetPptx);
+    tryAgainBtn.addEventListener('click', resetPptx);
+});
+
+/* ═══════════════════════════════════════════════════════════════
+   Excel to PDF — Upload .xls/.xlsx, convert via LibreOffice, download
+   ═══════════════════════════════════════════════════════════════ */
+document.addEventListener('DOMContentLoaded', () => {
+    const workspace = document.getElementById('workspace-excel2pdf');
+    if (!workspace) return;
+
+    const dropzone = document.getElementById('excel2pdf-dropzone');
+    const fileInput = document.getElementById('excel2pdfFileInput');
+    const fileInfo = document.getElementById('excel2pdfFileInfo');
+    const fileNameEl = document.getElementById('excel2pdfFileName');
+    const fileSizeEl = document.getElementById('excel2pdfFileSize');
+    const removeBtn = document.getElementById('excel2pdfRemoveFile');
+    const convertBtn = document.getElementById('excel2pdfBtn');
+
+    const stepUpload = document.getElementById('excel2pdf-step-upload');
+    const stepProcess = document.getElementById('excel2pdf-step-processing');
+    const stepDone = document.getElementById('excel2pdf-step-done');
+    const stepError = document.getElementById('excel2pdf-step-error');
+
+    const progressBar = document.getElementById('excel2pdfProgressBar');
+    const progressText = document.getElementById('excel2pdfProgressText');
+    const downloadBtn = document.getElementById('excel2pdfDownloadBtn');
+    const anotherBtn = document.getElementById('excel2pdfAnotherBtn');
+    const tryAgainBtn = document.getElementById('excel2pdfTryAgainBtn');
+    const errorText = document.getElementById('excel2pdfErrorText');
+
+    let selectedFile = null;
+
+    function formatBytes(b) {
+        if (b < 1024) return b + ' B';
+        if (b < 1048576) return (b / 1024).toFixed(1) + ' KB';
+        return (b / 1048576).toFixed(1) + ' MB';
+    }
+
+    function showStep(s) {
+        [stepUpload, stepProcess, stepDone, stepError].forEach(el => el.classList.remove('active'));
+        s.classList.add('active');
+    }
+
+    function setFile(file) {
+        if (!file) return;
+        const ext = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
+        if (ext !== '.xls' && ext !== '.xlsx') return;
+        if (file.size > 50 * 1024 * 1024) { alert('File too large.'); return; }
+        selectedFile = file;
+        fileNameEl.textContent = file.name;
+        fileSizeEl.textContent = formatBytes(file.size);
+        fileInfo.style.display = 'flex';
+        convertBtn.style.display = 'flex';
+        dropzone.style.display = 'none';
+    }
+
+    function resetExcel() {
+        selectedFile = null;
+        fileInput.value = '';
+        fileInfo.style.display = 'none';
+        convertBtn.style.display = 'none';
+        dropzone.style.display = 'block';
+        showStep(stepUpload);
+    }
+
+    // Drag & drop
+    dropzone.addEventListener('dragover', e => { e.preventDefault(); dropzone.classList.add('dragover'); });
+    dropzone.addEventListener('dragleave', () => dropzone.classList.remove('dragover'));
+    dropzone.addEventListener('drop', e => {
+        e.preventDefault(); dropzone.classList.remove('dragover');
+        if (e.dataTransfer.files.length) setFile(e.dataTransfer.files[0]);
+    });
+    dropzone.addEventListener('click', e => {
+        if (e.target.closest('#excel2pdfSelectBtn')) return;
+        fileInput.click();
+    });
+    fileInput.addEventListener('change', () => { if (fileInput.files.length) setFile(fileInput.files[0]); });
+    removeBtn.addEventListener('click', resetExcel);
+
+    // Convert action
+    convertBtn.addEventListener('click', () => {
+        if (!selectedFile) return;
+        showStep(stepProcess);
+        progressBar.style.width = '0%';
+        progressText.textContent = 'Uploading…';
+
+        const fd = new FormData();
+        fd.append('file', selectedFile);
+
+        const xhr = new XMLHttpRequest();
+        xhr.open('POST', '/api/excel-to-pdf');
+        xhr.responseType = 'blob';
+
+        xhr.upload.addEventListener('progress', e => {
+            if (e.lengthComputable) {
+                const pct = Math.round((e.loaded / e.total) * 100);
+                progressBar.style.width = pct + '%';
+                progressText.textContent = `Uploading… ${pct}%`;
+            }
+        });
+        xhr.upload.addEventListener('load', () => {
+            progressBar.style.width = '100%';
+            progressText.textContent = 'Converting… this may take a moment';
+        });
+        xhr.addEventListener('load', () => {
+            if (xhr.status === 200) {
+                const url = URL.createObjectURL(xhr.response);
+                downloadBtn.href = url;
+                downloadBtn.download = selectedFile.name.replace(/\.(xls|xlsx)$/i, '.pdf');
+                showStep(stepDone);
+            } else {
+                const reader = new FileReader();
+                reader.onload = () => {
+                    try { errorText.textContent = JSON.parse(reader.result).error; }
+                    catch { errorText.textContent = 'An error occurred.'; }
+                };
+                reader.readAsText(xhr.response);
+                showStep(stepError);
+            }
+        });
+        xhr.addEventListener('error', () => { errorText.textContent = 'Network error.'; showStep(stepError); });
+        xhr.send(fd);
+    });
+
+    anotherBtn.addEventListener('click', resetExcel);
+    tryAgainBtn.addEventListener('click', resetExcel);
+});
+
+/* ═══════════════════════════════════════════════════════════════
+   HTML to PDF — Upload .html/.htm, convert via LibreOffice, download
+   ═══════════════════════════════════════════════════════════════ */
+document.addEventListener('DOMContentLoaded', () => {
+    const workspace = document.getElementById('workspace-html2pdf');
+    if (!workspace) return;
+
+    const dropzone = document.getElementById('html2pdf-dropzone');
+    const fileInput = document.getElementById('html2pdfFileInput');
+    const fileInfo = document.getElementById('html2pdfFileInfo');
+    const fileNameEl = document.getElementById('html2pdfFileName');
+    const fileSizeEl = document.getElementById('html2pdfFileSize');
+    const removeBtn = document.getElementById('html2pdfRemoveFile');
+    const convertBtn = document.getElementById('html2pdfBtn');
+
+    const stepUpload = document.getElementById('html2pdf-step-upload');
+    const stepProcess = document.getElementById('html2pdf-step-processing');
+    const stepDone = document.getElementById('html2pdf-step-done');
+    const stepError = document.getElementById('html2pdf-step-error');
+
+    const progressBar = document.getElementById('html2pdfProgressBar');
+    const progressText = document.getElementById('html2pdfProgressText');
+    const downloadBtn = document.getElementById('html2pdfDownloadBtn');
+    const anotherBtn = document.getElementById('html2pdfAnotherBtn');
+    const tryAgainBtn = document.getElementById('html2pdfTryAgainBtn');
+    const errorText = document.getElementById('html2pdfErrorText');
+
+    let selectedFile = null;
+
+    function formatBytes(b) {
+        if (b < 1024) return b + ' B';
+        if (b < 1048576) return (b / 1024).toFixed(1) + ' KB';
+        return (b / 1048576).toFixed(1) + ' MB';
+    }
+
+    function showStep(s) {
+        [stepUpload, stepProcess, stepDone, stepError].forEach(el => el.classList.remove('active'));
+        s.classList.add('active');
+    }
+
+    function setFile(file) {
+        if (!file) return;
+        const ext = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
+        if (ext !== '.html' && ext !== '.htm') return;
+        if (file.size > 50 * 1024 * 1024) { alert('File too large.'); return; }
+        selectedFile = file;
+        fileNameEl.textContent = file.name;
+        fileSizeEl.textContent = formatBytes(file.size);
+        fileInfo.style.display = 'flex';
+        convertBtn.style.display = 'flex';
+        dropzone.style.display = 'none';
+    }
+
+    function resetHtml() {
+        selectedFile = null;
+        fileInput.value = '';
+        fileInfo.style.display = 'none';
+        convertBtn.style.display = 'none';
+        dropzone.style.display = 'block';
+        showStep(stepUpload);
+    }
+
+    // Drag & drop
+    dropzone.addEventListener('dragover', e => { e.preventDefault(); dropzone.classList.add('dragover'); });
+    dropzone.addEventListener('dragleave', () => dropzone.classList.remove('dragover'));
+    dropzone.addEventListener('drop', e => {
+        e.preventDefault(); dropzone.classList.remove('dragover');
+        if (e.dataTransfer.files.length) setFile(e.dataTransfer.files[0]);
+    });
+    dropzone.addEventListener('click', e => {
+        if (e.target.closest('#html2pdfSelectBtn')) return;
+        fileInput.click();
+    });
+    fileInput.addEventListener('change', () => { if (fileInput.files.length) setFile(fileInput.files[0]); });
+    removeBtn.addEventListener('click', resetHtml);
+
+    // Convert action
+    convertBtn.addEventListener('click', () => {
+        if (!selectedFile) return;
+        showStep(stepProcess);
+        progressBar.style.width = '0%';
+        progressText.textContent = 'Uploading…';
+
+        const fd = new FormData();
+        fd.append('file', selectedFile);
+
+        const xhr = new XMLHttpRequest();
+        xhr.open('POST', '/api/html-to-pdf');
+        xhr.responseType = 'blob';
+
+        xhr.upload.addEventListener('progress', e => {
+            if (e.lengthComputable) {
+                const pct = Math.round((e.loaded / e.total) * 100);
+                progressBar.style.width = pct + '%';
+                progressText.textContent = `Uploading… ${pct}%`;
+            }
+        });
+        xhr.upload.addEventListener('load', () => {
+            progressBar.style.width = '100%';
+            progressText.textContent = 'Converting… this may take a moment';
+        });
+        xhr.addEventListener('load', () => {
+            if (xhr.status === 200) {
+                const url = URL.createObjectURL(xhr.response);
+                downloadBtn.href = url;
+                downloadBtn.download = selectedFile.name.replace(/\.(html|htm)$/i, '.pdf');
+                showStep(stepDone);
+            } else {
+                const reader = new FileReader();
+                reader.onload = () => {
+                    try { errorText.textContent = JSON.parse(reader.result).error; }
+                    catch { errorText.textContent = 'An error occurred.'; }
+                };
+                reader.readAsText(xhr.response);
+                showStep(stepError);
+            }
+        });
+        xhr.addEventListener('error', () => { errorText.textContent = 'Network error.'; showStep(stepError); });
+        xhr.send(fd);
+    });
+
+    anotherBtn.addEventListener('click', resetHtml);
+    tryAgainBtn.addEventListener('click', resetHtml);
+});
+
+/* ═══════════════════════════════════════════════════════════════
+   CSV to PDF — Upload .csv, convert via LibreOffice, download
+   ═══════════════════════════════════════════════════════════════ */
+document.addEventListener('DOMContentLoaded', () => {
+    const workspace = document.getElementById('workspace-csv2pdf');
+    if (!workspace) return;
+
+    const dropzone = document.getElementById('csv2pdf-dropzone');
+    const fileInput = document.getElementById('csv2pdfFileInput');
+    const fileInfo = document.getElementById('csv2pdfFileInfo');
+    const fileNameEl = document.getElementById('csv2pdfFileName');
+    const fileSizeEl = document.getElementById('csv2pdfFileSize');
+    const removeBtn = document.getElementById('csv2pdfRemoveFile');
+    const convertBtn = document.getElementById('csv2pdfBtn');
+
+    const stepUpload = document.getElementById('csv2pdf-step-upload');
+    const stepProcess = document.getElementById('csv2pdf-step-processing');
+    const stepDone = document.getElementById('csv2pdf-step-done');
+    const stepError = document.getElementById('csv2pdf-step-error');
+
+    const progressBar = document.getElementById('csv2pdfProgressBar');
+    const progressText = document.getElementById('csv2pdfProgressText');
+    const downloadBtn = document.getElementById('csv2pdfDownloadBtn');
+    const anotherBtn = document.getElementById('csv2pdfAnotherBtn');
+    const tryAgainBtn = document.getElementById('csv2pdfTryAgainBtn');
+    const errorText = document.getElementById('csv2pdfErrorText');
+
+    let selectedFile = null;
+
+    function formatBytes(b) {
+        if (b < 1024) return b + ' B';
+        if (b < 1048576) return (b / 1024).toFixed(1) + ' KB';
+        return (b / 1048576).toFixed(1) + ' MB';
+    }
+
+    function showStep(s) {
+        [stepUpload, stepProcess, stepDone, stepError].forEach(el => el.classList.remove('active'));
+        s.classList.add('active');
+    }
+
+    function setFile(file) {
+        if (!file) return;
+        const ext = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
+        if (ext !== '.csv') return;
+        if (file.size > 50 * 1024 * 1024) { alert('File too large.'); return; }
+        selectedFile = file;
+        fileNameEl.textContent = file.name;
+        fileSizeEl.textContent = formatBytes(file.size);
+        fileInfo.style.display = 'flex';
+        convertBtn.style.display = 'flex';
+        dropzone.style.display = 'none';
+    }
+
+    function resetCsv() {
+        selectedFile = null;
+        fileInput.value = '';
+        fileInfo.style.display = 'none';
+        convertBtn.style.display = 'none';
+        dropzone.style.display = 'block';
+        showStep(stepUpload);
+    }
+
+    // Drag & drop
+    dropzone.addEventListener('dragover', e => { e.preventDefault(); dropzone.classList.add('dragover'); });
+    dropzone.addEventListener('dragleave', () => dropzone.classList.remove('dragover'));
+    dropzone.addEventListener('drop', e => {
+        e.preventDefault(); dropzone.classList.remove('dragover');
+        if (e.dataTransfer.files.length) setFile(e.dataTransfer.files[0]);
+    });
+    dropzone.addEventListener('click', e => {
+        if (e.target.closest('#csv2pdfSelectBtn')) return;
+        fileInput.click();
+    });
+    fileInput.addEventListener('change', () => { if (fileInput.files.length) setFile(fileInput.files[0]); });
+    removeBtn.addEventListener('click', resetCsv);
+
+    // Convert action
+    convertBtn.addEventListener('click', () => {
+        if (!selectedFile) return;
+        showStep(stepProcess);
+        progressBar.style.width = '0%';
+        progressText.textContent = 'Uploading…';
+
+        const fd = new FormData();
+        fd.append('file', selectedFile);
+
+        const xhr = new XMLHttpRequest();
+        xhr.open('POST', '/api/csv-to-pdf');
+        xhr.responseType = 'blob';
+
+        xhr.upload.addEventListener('progress', e => {
+            if (e.lengthComputable) {
+                const pct = Math.round((e.loaded / e.total) * 100);
+                progressBar.style.width = pct + '%';
+                progressText.textContent = `Uploading… ${pct}%`;
+            }
+        });
+        xhr.upload.addEventListener('load', () => {
+            progressBar.style.width = '100%';
+            progressText.textContent = 'Converting… this may take a moment';
+        });
+        xhr.addEventListener('load', () => {
+            if (xhr.status === 200) {
+                const url = URL.createObjectURL(xhr.response);
+                downloadBtn.href = url;
+                downloadBtn.download = selectedFile.name.replace(/\.csv$/i, '.pdf');
+                showStep(stepDone);
+            } else {
+                const reader = new FileReader();
+                reader.onload = () => {
+                    try { errorText.textContent = JSON.parse(reader.result).error; }
+                    catch { errorText.textContent = 'An error occurred.'; }
+                };
+                reader.readAsText(xhr.response);
+                showStep(stepError);
+            }
+        });
+        xhr.addEventListener('error', () => { errorText.textContent = 'Network error.'; showStep(stepError); });
+        xhr.send(fd);
+    });
+
+    anotherBtn.addEventListener('click', resetCsv);
+    tryAgainBtn.addEventListener('click', resetCsv);
+});
+
+/* ═══════════════════════════════════════════════════════════════
+   PDF to Word — Upload .pdf, convert via LibreOffice, download .docx
+   ═══════════════════════════════════════════════════════════════ */
+document.addEventListener('DOMContentLoaded', () => {
+    const workspace = document.getElementById('workspace-pdf2word');
+    if (!workspace) return;
+
+    const dropzone = document.getElementById('pdf2word-dropzone');
+    const fileInput = document.getElementById('pdf2wordFileInput');
+    const fileInfo = document.getElementById('pdf2wordFileInfo');
+    const fileNameEl = document.getElementById('pdf2wordFileName');
+    const fileSizeEl = document.getElementById('pdf2wordFileSize');
+    const removeBtn = document.getElementById('pdf2wordRemoveFile');
+    const convertBtn = document.getElementById('pdf2wordBtn');
+
+    const stepUpload = document.getElementById('pdf2word-step-upload');
+    const stepProcess = document.getElementById('pdf2word-step-processing');
+    const stepDone = document.getElementById('pdf2word-step-done');
+    const stepError = document.getElementById('pdf2word-step-error');
+
+    const progressBar = document.getElementById('pdf2wordProgressBar');
+    const progressText = document.getElementById('pdf2wordProgressText');
+    const downloadBtn = document.getElementById('pdf2wordDownloadBtn');
+    const anotherBtn = document.getElementById('pdf2wordAnotherBtn');
+    const tryAgainBtn = document.getElementById('pdf2wordTryAgainBtn');
+    const errorText = document.getElementById('pdf2wordErrorText');
+
+    let selectedFile = null;
+
+    function formatBytes(b) {
+        if (b < 1024) return b + ' B';
+        if (b < 1048576) return (b / 1024).toFixed(1) + ' KB';
+        return (b / 1048576).toFixed(1) + ' MB';
+    }
+
+    function showStep(s) {
+        [stepUpload, stepProcess, stepDone, stepError].forEach(el => el.classList.remove('active'));
+        s.classList.add('active');
+    }
+
+    function setFile(file) {
+        if (!file) return;
+        const ext = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
+        if (ext !== '.pdf') return;
+        if (file.size > 50 * 1024 * 1024) { alert('File too large.'); return; }
+        selectedFile = file;
+        fileNameEl.textContent = file.name;
+        fileSizeEl.textContent = formatBytes(file.size);
+        fileInfo.style.display = 'flex';
+        convertBtn.style.display = 'flex';
+        dropzone.style.display = 'none';
+    }
+
+    function resetForm() {
+        selectedFile = null;
+        fileInput.value = '';
+        fileInfo.style.display = 'none';
+        convertBtn.style.display = 'none';
+        dropzone.style.display = 'block';
+        showStep(stepUpload);
+    }
+
+    dropzone.addEventListener('dragover', e => { e.preventDefault(); dropzone.classList.add('dragover'); });
+    dropzone.addEventListener('dragleave', () => dropzone.classList.remove('dragover'));
+    dropzone.addEventListener('drop', e => {
+        e.preventDefault(); dropzone.classList.remove('dragover');
+        if (e.dataTransfer.files.length) setFile(e.dataTransfer.files[0]);
+    });
+    dropzone.addEventListener('click', e => {
+        if (e.target.closest('#pdf2wordSelectBtn')) return;
+        fileInput.click();
+    });
+    fileInput.addEventListener('change', () => { if (fileInput.files.length) setFile(fileInput.files[0]); });
+    removeBtn.addEventListener('click', resetForm);
+
+    convertBtn.addEventListener('click', () => {
+        if (!selectedFile) return;
+        showStep(stepProcess);
+        progressBar.style.width = '0%';
+        progressText.textContent = 'Uploading…';
+
+        const fd = new FormData();
+        fd.append('file', selectedFile);
+
+        const xhr = new XMLHttpRequest();
+        xhr.open('POST', '/api/pdf-to-word');
+        xhr.responseType = 'blob';
+
+        xhr.upload.addEventListener('progress', e => {
+            if (e.lengthComputable) {
+                const pct = Math.round((e.loaded / e.total) * 100);
+                progressBar.style.width = pct + '%';
+                progressText.textContent = `Uploading… ${pct}%`;
+            }
+        });
+        xhr.upload.addEventListener('load', () => {
+            progressBar.style.width = '100%';
+            progressText.textContent = 'Converting… this may take a moment';
+        });
+        xhr.addEventListener('load', () => {
+            if (xhr.status === 200) {
+                const url = URL.createObjectURL(xhr.response);
+                downloadBtn.href = url;
+                downloadBtn.download = selectedFile.name.replace(/\.pdf$/i, '.docx');
+                showStep(stepDone);
+            } else {
+                const reader = new FileReader();
+                reader.onload = () => {
+                    try { errorText.textContent = JSON.parse(reader.result).error; }
+                    catch { errorText.textContent = 'An error occurred.'; }
+                };
+                reader.readAsText(xhr.response);
+                showStep(stepError);
+            }
+        });
+        xhr.addEventListener('error', () => { errorText.textContent = 'Network error.'; showStep(stepError); });
+        xhr.send(fd);
+    });
+
+    anotherBtn.addEventListener('click', resetForm);
+    tryAgainBtn.addEventListener('click', resetForm);
+});
+
+/* ═══════════════════════════════════════════════════════════════
+   PDF to PowerPoint — Upload .pdf, convert via LibreOffice, download .pptx
+   ═══════════════════════════════════════════════════════════════ */
+document.addEventListener('DOMContentLoaded', () => {
+    const workspace = document.getElementById('workspace-pdf2pptx');
+    if (!workspace) return;
+
+    const dropzone = document.getElementById('pdf2pptx-dropzone');
+    const fileInput = document.getElementById('pdf2pptxFileInput');
+    const fileInfo = document.getElementById('pdf2pptxFileInfo');
+    const fileNameEl = document.getElementById('pdf2pptxFileName');
+    const fileSizeEl = document.getElementById('pdf2pptxFileSize');
+    const removeBtn = document.getElementById('pdf2pptxRemoveFile');
+    const convertBtn = document.getElementById('pdf2pptxBtn');
+
+    const stepUpload = document.getElementById('pdf2pptx-step-upload');
+    const stepProcess = document.getElementById('pdf2pptx-step-processing');
+    const stepDone = document.getElementById('pdf2pptx-step-done');
+    const stepError = document.getElementById('pdf2pptx-step-error');
+
+    const progressBar = document.getElementById('pdf2pptxProgressBar');
+    const progressText = document.getElementById('pdf2pptxProgressText');
+    const downloadBtn = document.getElementById('pdf2pptxDownloadBtn');
+    const anotherBtn = document.getElementById('pdf2pptxAnotherBtn');
+    const tryAgainBtn = document.getElementById('pdf2pptxTryAgainBtn');
+    const errorText = document.getElementById('pdf2pptxErrorText');
+
+    let selectedFile = null;
+
+    function formatBytes(b) {
+        if (b < 1024) return b + ' B';
+        if (b < 1048576) return (b / 1024).toFixed(1) + ' KB';
+        return (b / 1048576).toFixed(1) + ' MB';
+    }
+
+    function showStep(s) {
+        [stepUpload, stepProcess, stepDone, stepError].forEach(el => el.classList.remove('active'));
+        s.classList.add('active');
+    }
+
+    function setFile(file) {
+        if (!file) return;
+        const ext = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
+        if (ext !== '.pdf') return;
+        if (file.size > 50 * 1024 * 1024) { alert('File too large.'); return; }
+        selectedFile = file;
+        fileNameEl.textContent = file.name;
+        fileSizeEl.textContent = formatBytes(file.size);
+        fileInfo.style.display = 'flex';
+        convertBtn.style.display = 'flex';
+        dropzone.style.display = 'none';
+    }
+
+    function resetForm() {
+        selectedFile = null;
+        fileInput.value = '';
+        fileInfo.style.display = 'none';
+        convertBtn.style.display = 'none';
+        dropzone.style.display = 'block';
+        showStep(stepUpload);
+    }
+
+    dropzone.addEventListener('dragover', e => { e.preventDefault(); dropzone.classList.add('dragover'); });
+    dropzone.addEventListener('dragleave', () => dropzone.classList.remove('dragover'));
+    dropzone.addEventListener('drop', e => {
+        e.preventDefault(); dropzone.classList.remove('dragover');
+        if (e.dataTransfer.files.length) setFile(e.dataTransfer.files[0]);
+    });
+    dropzone.addEventListener('click', e => {
+        if (e.target.closest('#pdf2pptxSelectBtn')) return;
+        fileInput.click();
+    });
+    fileInput.addEventListener('change', () => { if (fileInput.files.length) setFile(fileInput.files[0]); });
+    removeBtn.addEventListener('click', resetForm);
+
+    convertBtn.addEventListener('click', () => {
+        if (!selectedFile) return;
+        showStep(stepProcess);
+        progressBar.style.width = '0%';
+        progressText.textContent = 'Uploading…';
+
+        const fd = new FormData();
+        fd.append('file', selectedFile);
+
+        const xhr = new XMLHttpRequest();
+        xhr.open('POST', '/api/pdf-to-pptx');
+        xhr.responseType = 'blob';
+
+        xhr.upload.addEventListener('progress', e => {
+            if (e.lengthComputable) {
+                const pct = Math.round((e.loaded / e.total) * 100);
+                progressBar.style.width = pct + '%';
+                progressText.textContent = `Uploading… ${pct}%`;
+            }
+        });
+        xhr.upload.addEventListener('load', () => {
+            progressBar.style.width = '100%';
+            progressText.textContent = 'Converting… this may take a moment';
+        });
+        xhr.addEventListener('load', () => {
+            if (xhr.status === 200) {
+                const url = URL.createObjectURL(xhr.response);
+                downloadBtn.href = url;
+                downloadBtn.download = selectedFile.name.replace(/\.pdf$/i, '.pptx');
+                showStep(stepDone);
+            } else {
+                const reader = new FileReader();
+                reader.onload = () => {
+                    try { errorText.textContent = JSON.parse(reader.result).error; }
+                    catch { errorText.textContent = 'An error occurred.'; }
+                };
+                reader.readAsText(xhr.response);
+                showStep(stepError);
+            }
+        });
+        xhr.addEventListener('error', () => { errorText.textContent = 'Network error.'; showStep(stepError); });
+        xhr.send(fd);
+    });
+
+    anotherBtn.addEventListener('click', resetForm);
+    tryAgainBtn.addEventListener('click', resetForm);
+});
+
+/* ═══════════════════════════════════════════════════════════════
+   PDF to Excel — Upload .pdf, convert via LibreOffice, download .xlsx
+   ═══════════════════════════════════════════════════════════════ */
+document.addEventListener('DOMContentLoaded', () => {
+    const workspace = document.getElementById('workspace-pdf2excel');
+    if (!workspace) return;
+
+    const dropzone = document.getElementById('pdf2excel-dropzone');
+    const fileInput = document.getElementById('pdf2excelFileInput');
+    const fileInfo = document.getElementById('pdf2excelFileInfo');
+    const fileNameEl = document.getElementById('pdf2excelFileName');
+    const fileSizeEl = document.getElementById('pdf2excelFileSize');
+    const removeBtn = document.getElementById('pdf2excelRemoveFile');
+    const convertBtn = document.getElementById('pdf2excelBtn');
+
+    const stepUpload = document.getElementById('pdf2excel-step-upload');
+    const stepProcess = document.getElementById('pdf2excel-step-processing');
+    const stepDone = document.getElementById('pdf2excel-step-done');
+    const stepError = document.getElementById('pdf2excel-step-error');
+
+    const progressBar = document.getElementById('pdf2excelProgressBar');
+    const progressText = document.getElementById('pdf2excelProgressText');
+    const downloadBtn = document.getElementById('pdf2excelDownloadBtn');
+    const anotherBtn = document.getElementById('pdf2excelAnotherBtn');
+    const tryAgainBtn = document.getElementById('pdf2excelTryAgainBtn');
+    const errorText = document.getElementById('pdf2excelErrorText');
+
+    let selectedFile = null;
+
+    function formatBytes(b) {
+        if (b < 1024) return b + ' B';
+        if (b < 1048576) return (b / 1024).toFixed(1) + ' KB';
+        return (b / 1048576).toFixed(1) + ' MB';
+    }
+
+    function showStep(s) {
+        [stepUpload, stepProcess, stepDone, stepError].forEach(el => el.classList.remove('active'));
+        s.classList.add('active');
+    }
+
+    function setFile(file) {
+        if (!file) return;
+        const ext = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
+        if (ext !== '.pdf') return;
+        if (file.size > 50 * 1024 * 1024) { alert('File too large.'); return; }
+        selectedFile = file;
+        fileNameEl.textContent = file.name;
+        fileSizeEl.textContent = formatBytes(file.size);
+        fileInfo.style.display = 'flex';
+        convertBtn.style.display = 'flex';
+        dropzone.style.display = 'none';
+    }
+
+    function resetForm() {
+        selectedFile = null;
+        fileInput.value = '';
+        fileInfo.style.display = 'none';
+        convertBtn.style.display = 'none';
+        dropzone.style.display = 'block';
+        showStep(stepUpload);
+    }
+
+    dropzone.addEventListener('dragover', e => { e.preventDefault(); dropzone.classList.add('dragover'); });
+    dropzone.addEventListener('dragleave', () => dropzone.classList.remove('dragover'));
+    dropzone.addEventListener('drop', e => {
+        e.preventDefault(); dropzone.classList.remove('dragover');
+        if (e.dataTransfer.files.length) setFile(e.dataTransfer.files[0]);
+    });
+    dropzone.addEventListener('click', e => {
+        if (e.target.closest('#pdf2excelSelectBtn')) return;
+        fileInput.click();
+    });
+    fileInput.addEventListener('change', () => { if (fileInput.files.length) setFile(fileInput.files[0]); });
+    removeBtn.addEventListener('click', resetForm);
+
+    convertBtn.addEventListener('click', () => {
+        if (!selectedFile) return;
+        showStep(stepProcess);
+        progressBar.style.width = '0%';
+        progressText.textContent = 'Uploading…';
+
+        const fd = new FormData();
+        fd.append('file', selectedFile);
+
+        const xhr = new XMLHttpRequest();
+        xhr.open('POST', '/api/pdf-to-excel');
+        xhr.responseType = 'blob';
+
+        xhr.upload.addEventListener('progress', e => {
+            if (e.lengthComputable) {
+                const pct = Math.round((e.loaded / e.total) * 100);
+                progressBar.style.width = pct + '%';
+                progressText.textContent = `Uploading… ${pct}%`;
+            }
+        });
+        xhr.upload.addEventListener('load', () => {
+            progressBar.style.width = '100%';
+            progressText.textContent = 'Converting… this may take a moment';
+        });
+        xhr.addEventListener('load', () => {
+            if (xhr.status === 200) {
+                const url = URL.createObjectURL(xhr.response);
+                downloadBtn.href = url;
+                downloadBtn.download = selectedFile.name.replace(/\.pdf$/i, '.xlsx');
+                showStep(stepDone);
+            } else {
+                const reader = new FileReader();
+                reader.onload = () => {
+                    try { errorText.textContent = JSON.parse(reader.result).error; }
+                    catch { errorText.textContent = 'An error occurred.'; }
+                };
+                reader.readAsText(xhr.response);
+                showStep(stepError);
+            }
+        });
+        xhr.addEventListener('error', () => { errorText.textContent = 'Network error.'; showStep(stepError); });
+        xhr.send(fd);
+    });
+
+    anotherBtn.addEventListener('click', resetForm);
+    tryAgainBtn.addEventListener('click', resetForm);
+});
+
+/* ═══════════════════════════════════════════════════════════════
+   PDF to CSV — Upload .pdf, convert via LibreOffice, download .csv
+   ═══════════════════════════════════════════════════════════════ */
+document.addEventListener('DOMContentLoaded', () => {
+    const workspace = document.getElementById('workspace-pdf2csv');
+    if (!workspace) return;
+
+    const dropzone = document.getElementById('pdf2csv-dropzone');
+    const fileInput = document.getElementById('pdf2csvFileInput');
+    const fileInfo = document.getElementById('pdf2csvFileInfo');
+    const fileNameEl = document.getElementById('pdf2csvFileName');
+    const fileSizeEl = document.getElementById('pdf2csvFileSize');
+    const removeBtn = document.getElementById('pdf2csvRemoveFile');
+    const convertBtn = document.getElementById('pdf2csvBtn');
+
+    const stepUpload = document.getElementById('pdf2csv-step-upload');
+    const stepProcess = document.getElementById('pdf2csv-step-processing');
+    const stepDone = document.getElementById('pdf2csv-step-done');
+    const stepError = document.getElementById('pdf2csv-step-error');
+
+    const progressBar = document.getElementById('pdf2csvProgressBar');
+    const progressText = document.getElementById('pdf2csvProgressText');
+    const downloadBtn = document.getElementById('pdf2csvDownloadBtn');
+    const anotherBtn = document.getElementById('pdf2csvAnotherBtn');
+    const tryAgainBtn = document.getElementById('pdf2csvTryAgainBtn');
+    const errorText = document.getElementById('pdf2csvErrorText');
+
+    let selectedFile = null;
+
+    function formatBytes(b) {
+        if (b < 1024) return b + ' B';
+        if (b < 1048576) return (b / 1024).toFixed(1) + ' KB';
+        return (b / 1048576).toFixed(1) + ' MB';
+    }
+
+    function showStep(s) {
+        [stepUpload, stepProcess, stepDone, stepError].forEach(el => el.classList.remove('active'));
+        s.classList.add('active');
+    }
+
+    function setFile(file) {
+        if (!file) return;
+        const ext = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
+        if (ext !== '.pdf') return;
+        if (file.size > 50 * 1024 * 1024) { alert('File too large.'); return; }
+        selectedFile = file;
+        fileNameEl.textContent = file.name;
+        fileSizeEl.textContent = formatBytes(file.size);
+        fileInfo.style.display = 'flex';
+        convertBtn.style.display = 'flex';
+        dropzone.style.display = 'none';
+    }
+
+    function resetForm() {
+        selectedFile = null;
+        fileInput.value = '';
+        fileInfo.style.display = 'none';
+        convertBtn.style.display = 'none';
+        dropzone.style.display = 'block';
+        showStep(stepUpload);
+    }
+
+    dropzone.addEventListener('dragover', e => { e.preventDefault(); dropzone.classList.add('dragover'); });
+    dropzone.addEventListener('dragleave', () => dropzone.classList.remove('dragover'));
+    dropzone.addEventListener('drop', e => {
+        e.preventDefault(); dropzone.classList.remove('dragover');
+        if (e.dataTransfer.files.length) setFile(e.dataTransfer.files[0]);
+    });
+    dropzone.addEventListener('click', e => {
+        if (e.target.closest('#pdf2csvSelectBtn')) return;
+        fileInput.click();
+    });
+    fileInput.addEventListener('change', () => { if (fileInput.files.length) setFile(fileInput.files[0]); });
+    removeBtn.addEventListener('click', resetForm);
+
+    convertBtn.addEventListener('click', () => {
+        if (!selectedFile) return;
+        showStep(stepProcess);
+        progressBar.style.width = '0%';
+        progressText.textContent = 'Uploading…';
+
+        const fd = new FormData();
+        fd.append('file', selectedFile);
+
+        const xhr = new XMLHttpRequest();
+        xhr.open('POST', '/api/pdf-to-csv');
+        xhr.responseType = 'blob';
+
+        xhr.upload.addEventListener('progress', e => {
+            if (e.lengthComputable) {
+                const pct = Math.round((e.loaded / e.total) * 100);
+                progressBar.style.width = pct + '%';
+                progressText.textContent = `Uploading… ${pct}%`;
+            }
+        });
+        xhr.upload.addEventListener('load', () => {
+            progressBar.style.width = '100%';
+            progressText.textContent = 'Converting… this may take a moment';
+        });
+        xhr.addEventListener('load', () => {
+            if (xhr.status === 200) {
+                const url = URL.createObjectURL(xhr.response);
+                downloadBtn.href = url;
+                downloadBtn.download = selectedFile.name.replace(/\.pdf$/i, '.csv');
+                showStep(stepDone);
+            } else {
+                const reader = new FileReader();
+                reader.onload = () => {
+                    try { errorText.textContent = JSON.parse(reader.result).error; }
+                    catch { errorText.textContent = 'An error occurred.'; }
+                };
+                reader.readAsText(xhr.response);
+                showStep(stepError);
+            }
+        });
+        xhr.addEventListener('error', () => { errorText.textContent = 'Network error.'; showStep(stepError); });
+        xhr.send(fd);
+    });
+
+    anotherBtn.addEventListener('click', resetForm);
+    tryAgainBtn.addEventListener('click', resetForm);
 });

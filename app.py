@@ -48,6 +48,44 @@ def jpg_to_pdf_page():
     return render_template('jpg_to_pdf.html')
 
 
+@app.route('/word-to-pdf')
+def word_to_pdf_page():
+    return render_template('word_to_pdf.html')
+
+
+@app.route('/pptx-to-pdf')
+def pptx_to_pdf_page():
+    return render_template('pptx_to_pdf.html')
+
+@app.route('/excel-to-pdf')
+def excel_to_pdf_page():
+    return render_template('excel_to_pdf.html')
+
+@app.route('/html-to-pdf')
+def html_to_pdf_page():
+    return render_template('html_to_pdf.html')
+
+@app.route('/csv-to-pdf')
+def csv_to_pdf_page():
+    return render_template('csv_to_pdf.html')
+
+@app.route('/pdf-to-word')
+def pdf_to_word_page():
+    return render_template('pdf_to_word.html')
+
+@app.route('/pdf-to-pptx')
+def pdf_to_pptx_page():
+    return render_template('pdf_to_pptx.html')
+
+@app.route('/pdf-to-excel')
+def pdf_to_excel_page():
+    return render_template('pdf_to_excel.html')
+
+@app.route('/pdf-to-csv')
+def pdf_to_csv_page():
+    return render_template('pdf_to_csv.html')
+
+
 # ─── API ──────────────────────────────────────────────────────────────
 @app.route('/api/pdf-to-images', methods=['POST'])
 def api_pdf_to_images():
@@ -330,7 +368,7 @@ def api_compress_pdf():
         return jsonify({'error': str(e)}), 500
 
 
-# ─── JPG to PDF API ──────────────────────────────────────────────────
+# ─── Images to PDF API ──────────────────────────────────────────────────
 @app.route('/api/jpg-to-pdf', methods=['POST'])
 def api_jpg_to_pdf():
     files = request.files.getlist('files')
@@ -376,6 +414,601 @@ def api_jpg_to_pdf():
             mimetype='application/pdf',
             as_attachment=True,
             download_name=out_name
+        )
+
+        @response.call_on_close
+        def _cleanup():
+            shutil.rmtree(job_upload, ignore_errors=True)
+            shutil.rmtree(job_output, ignore_errors=True)
+
+        return response
+
+    except Exception as e:
+        shutil.rmtree(job_upload, ignore_errors=True)
+        shutil.rmtree(job_output, ignore_errors=True)
+        return jsonify({'error': str(e)}), 500
+
+
+# ─── Word to PDF API ─────────────────────────────────────────────────
+@app.route('/api/word-to-pdf', methods=['POST'])
+def api_word_to_pdf():
+    if 'file' not in request.files:
+        return jsonify({'error': 'No file uploaded.'}), 400
+
+    file = request.files['file']
+    ext = os.path.splitext(file.filename)[1].lower()
+    if ext not in ('.doc', '.docx'):
+        return jsonify({'error': 'Only .doc and .docx files are supported.'}), 400
+
+    job_id = str(uuid.uuid4())
+    job_upload = os.path.join(UPLOAD_DIR, job_id)
+    job_output = os.path.join(OUTPUT_DIR, job_id)
+    os.makedirs(job_upload, exist_ok=True)
+    os.makedirs(job_output, exist_ok=True)
+
+    try:
+        input_path = os.path.join(job_upload, file.filename)
+        file.save(input_path)
+
+        # Use LibreOffice headless to convert
+        result = subprocess.run([
+            'soffice', '--headless', '--convert-to', 'pdf',
+            '--outdir', job_output, input_path
+        ], capture_output=True, timeout=120)
+
+        if result.returncode != 0:
+            return jsonify({'error': 'Conversion failed. Please try again.'}), 500
+
+        # Find the output PDF
+        base_name = os.path.splitext(file.filename)[0] + '.pdf'
+        out_path = os.path.join(job_output, base_name)
+
+        if not os.path.exists(out_path):
+            # Try to find any PDF in output dir
+            pdfs = [f for f in os.listdir(job_output) if f.endswith('.pdf')]
+            if pdfs:
+                out_path = os.path.join(job_output, pdfs[0])
+                base_name = pdfs[0]
+            else:
+                return jsonify({'error': 'Conversion produced no output.'}), 500
+
+        response = send_file(
+            out_path,
+            mimetype='application/pdf',
+            as_attachment=True,
+            download_name=base_name
+        )
+
+        @response.call_on_close
+        def _cleanup():
+            shutil.rmtree(job_upload, ignore_errors=True)
+            shutil.rmtree(job_output, ignore_errors=True)
+
+        return response
+
+    except subprocess.TimeoutExpired:
+        shutil.rmtree(job_upload, ignore_errors=True)
+        shutil.rmtree(job_output, ignore_errors=True)
+        return jsonify({'error': 'Conversion timed out. The file may be too large.'}), 500
+    except Exception as e:
+        shutil.rmtree(job_upload, ignore_errors=True)
+        shutil.rmtree(job_output, ignore_errors=True)
+        return jsonify({'error': str(e)}), 500
+
+
+# ─── PowerPoint to PDF API ─────────────────────────────────────────────
+@app.route('/api/pptx-to-pdf', methods=['POST'])
+def api_pptx_to_pdf():
+    if 'file' not in request.files:
+        return jsonify({'error': 'No file uploaded.'}), 400
+
+    file = request.files['file']
+    ext = os.path.splitext(file.filename)[1].lower()
+    if ext not in ('.ppt', '.pptx'):
+        return jsonify({'error': 'Only .ppt and .pptx files are supported.'}), 400
+
+    job_id = str(uuid.uuid4())
+    job_upload = os.path.join(UPLOAD_DIR, job_id)
+    job_output = os.path.join(OUTPUT_DIR, job_id)
+    os.makedirs(job_upload, exist_ok=True)
+    os.makedirs(job_output, exist_ok=True)
+
+    try:
+        input_path = os.path.join(job_upload, file.filename)
+        file.save(input_path)
+
+        # Use LibreOffice headless to convert
+        result = subprocess.run([
+            'soffice', '--headless', '--convert-to', 'pdf',
+            '--outdir', job_output, input_path
+        ], capture_output=True, timeout=120)
+
+        if result.returncode != 0:
+            return jsonify({'error': 'Conversion failed. Please try again.'}), 500
+
+        # Find the output PDF
+        base_name = os.path.splitext(file.filename)[0] + '.pdf'
+        out_path = os.path.join(job_output, base_name)
+
+        if not os.path.exists(out_path):
+            # Try to find any PDF in output dir
+            pdfs = [f for f in os.listdir(job_output) if f.endswith('.pdf')]
+            if pdfs:
+                out_path = os.path.join(job_output, pdfs[0])
+                base_name = pdfs[0]
+            else:
+                return jsonify({'error': 'Conversion produced no output.'}), 500
+
+        response = send_file(
+            out_path,
+            mimetype='application/pdf',
+            as_attachment=True,
+            download_name=base_name
+        )
+
+        @response.call_on_close
+        def _cleanup():
+            shutil.rmtree(job_upload, ignore_errors=True)
+            shutil.rmtree(job_output, ignore_errors=True)
+
+        return response
+
+    except subprocess.TimeoutExpired:
+        shutil.rmtree(job_upload, ignore_errors=True)
+        shutil.rmtree(job_output, ignore_errors=True)
+        return jsonify({'error': 'Conversion timed out. The file may be too large.'}), 500
+    except Exception as e:
+        shutil.rmtree(job_upload, ignore_errors=True)
+        shutil.rmtree(job_output, ignore_errors=True)
+        return jsonify({'error': str(e)}), 500
+
+
+# ─── Excel to PDF API ────────────────────────────────────────────────
+@app.route('/api/excel-to-pdf', methods=['POST'])
+def api_excel_to_pdf():
+    if 'file' not in request.files:
+        return jsonify({'error': 'No file uploaded.'}), 400
+
+    file = request.files['file']
+    ext = os.path.splitext(file.filename)[1].lower()
+    if ext not in ('.xls', '.xlsx'):
+        return jsonify({'error': 'Only .xls and .xlsx files are supported.'}), 400
+
+    job_id = str(uuid.uuid4())
+    job_upload = os.path.join(UPLOAD_DIR, job_id)
+    job_output = os.path.join(OUTPUT_DIR, job_id)
+    os.makedirs(job_upload, exist_ok=True)
+    os.makedirs(job_output, exist_ok=True)
+
+    try:
+        input_path = os.path.join(job_upload, file.filename)
+        file.save(input_path)
+
+        # Use LibreOffice headless to convert
+        result = subprocess.run([
+            'soffice', '--headless', '--convert-to', 'pdf',
+            '--outdir', job_output, input_path
+        ], capture_output=True, timeout=120)
+
+        if result.returncode != 0:
+            return jsonify({'error': 'Conversion failed. Please try again.'}), 500
+
+        # Find the output PDF
+        base_name = os.path.splitext(file.filename)[0] + '.pdf'
+        out_path = os.path.join(job_output, base_name)
+
+        if not os.path.exists(out_path):
+            pdfs = [f for f in os.listdir(job_output) if f.endswith('.pdf')]
+            if pdfs:
+                out_path = os.path.join(job_output, pdfs[0])
+                base_name = pdfs[0]
+            else:
+                return jsonify({'error': 'Conversion produced no output.'}), 500
+
+        response = send_file(
+            out_path,
+            mimetype='application/pdf',
+            as_attachment=True,
+            download_name=base_name
+        )
+
+        @response.call_on_close
+        def _cleanup():
+            shutil.rmtree(job_upload, ignore_errors=True)
+            shutil.rmtree(job_output, ignore_errors=True)
+
+        return response
+
+    except subprocess.TimeoutExpired:
+        shutil.rmtree(job_upload, ignore_errors=True)
+        shutil.rmtree(job_output, ignore_errors=True)
+        return jsonify({'error': 'Conversion timed out. The file may be too large.'}), 500
+    except Exception as e:
+        shutil.rmtree(job_upload, ignore_errors=True)
+        shutil.rmtree(job_output, ignore_errors=True)
+        return jsonify({'error': str(e)}), 500
+
+
+# ─── HTML to PDF API ─────────────────────────────────────────────────
+@app.route('/api/html-to-pdf', methods=['POST'])
+def api_html_to_pdf():
+    if 'file' not in request.files:
+        return jsonify({'error': 'No file uploaded.'}), 400
+
+    file = request.files['file']
+    ext = os.path.splitext(file.filename)[1].lower()
+    if ext not in ('.html', '.htm'):
+        return jsonify({'error': 'Only .html and .htm files are supported.'}), 400
+
+    job_id = str(uuid.uuid4())
+    job_upload = os.path.join(UPLOAD_DIR, job_id)
+    job_output = os.path.join(OUTPUT_DIR, job_id)
+    os.makedirs(job_upload, exist_ok=True)
+    os.makedirs(job_output, exist_ok=True)
+
+    try:
+        input_path = os.path.join(job_upload, file.filename)
+        file.save(input_path)
+
+        # Use LibreOffice headless to convert
+        result = subprocess.run([
+            'soffice', '--headless', '--convert-to', 'pdf',
+            '--outdir', job_output, input_path
+        ], capture_output=True, timeout=120)
+
+        if result.returncode != 0:
+            return jsonify({'error': 'Conversion failed. Please try again.'}), 500
+
+        # Find the output PDF
+        base_name = os.path.splitext(file.filename)[0] + '.pdf'
+        out_path = os.path.join(job_output, base_name)
+
+        if not os.path.exists(out_path):
+            pdfs = [f for f in os.listdir(job_output) if f.endswith('.pdf')]
+            if pdfs:
+                out_path = os.path.join(job_output, pdfs[0])
+                base_name = pdfs[0]
+            else:
+                return jsonify({'error': 'Conversion produced no output.'}), 500
+
+        response = send_file(
+            out_path,
+            mimetype='application/pdf',
+            as_attachment=True,
+            download_name=base_name
+        )
+
+        @response.call_on_close
+        def _cleanup():
+            shutil.rmtree(job_upload, ignore_errors=True)
+            shutil.rmtree(job_output, ignore_errors=True)
+
+        return response
+
+    except subprocess.TimeoutExpired:
+        shutil.rmtree(job_upload, ignore_errors=True)
+        shutil.rmtree(job_output, ignore_errors=True)
+        return jsonify({'error': 'Conversion timed out. The file may be too large.'}), 500
+    except Exception as e:
+        shutil.rmtree(job_upload, ignore_errors=True)
+        shutil.rmtree(job_output, ignore_errors=True)
+        return jsonify({'error': str(e)}), 500
+
+
+# ─── CSV to PDF API ──────────────────────────────────────────────────
+@app.route('/api/csv-to-pdf', methods=['POST'])
+def api_csv_to_pdf():
+    if 'file' not in request.files:
+        return jsonify({'error': 'No file uploaded.'}), 400
+
+    file = request.files['file']
+    ext = os.path.splitext(file.filename)[1].lower()
+    if ext != '.csv':
+        return jsonify({'error': 'Only .csv files are supported.'}), 400
+
+    job_id = str(uuid.uuid4())
+    job_upload = os.path.join(UPLOAD_DIR, job_id)
+    job_output = os.path.join(OUTPUT_DIR, job_id)
+    os.makedirs(job_upload, exist_ok=True)
+    os.makedirs(job_output, exist_ok=True)
+
+    try:
+        input_path = os.path.join(job_upload, file.filename)
+        file.save(input_path)
+
+        # Use LibreOffice headless to convert CSV → PDF
+        result = subprocess.run([
+            'soffice', '--headless', '--convert-to', 'pdf',
+            '--outdir', job_output, input_path
+        ], capture_output=True, timeout=120)
+
+        if result.returncode != 0:
+            return jsonify({'error': 'Conversion failed. Please try again.'}), 500
+
+        # Find the output PDF
+        base_name = os.path.splitext(file.filename)[0] + '.pdf'
+        out_path = os.path.join(job_output, base_name)
+
+        if not os.path.exists(out_path):
+            pdfs = [f for f in os.listdir(job_output) if f.endswith('.pdf')]
+            if pdfs:
+                out_path = os.path.join(job_output, pdfs[0])
+                base_name = pdfs[0]
+            else:
+                return jsonify({'error': 'Conversion produced no output.'}), 500
+
+        response = send_file(
+            out_path,
+            mimetype='application/pdf',
+            as_attachment=True,
+            download_name=base_name
+        )
+
+        @response.call_on_close
+        def _cleanup():
+            shutil.rmtree(job_upload, ignore_errors=True)
+            shutil.rmtree(job_output, ignore_errors=True)
+
+        return response
+
+    except subprocess.TimeoutExpired:
+        shutil.rmtree(job_upload, ignore_errors=True)
+        shutil.rmtree(job_output, ignore_errors=True)
+        return jsonify({'error': 'Conversion timed out. The file may be too large.'}), 500
+    except Exception as e:
+        shutil.rmtree(job_upload, ignore_errors=True)
+        shutil.rmtree(job_output, ignore_errors=True)
+        return jsonify({'error': str(e)}), 500
+
+
+# ─── PDF to Word API ─────────────────────────────────────────────────
+@app.route('/api/pdf-to-word', methods=['POST'])
+def api_pdf_to_word():
+    if 'file' not in request.files:
+        return jsonify({'error': 'No file uploaded.'}), 400
+
+    file = request.files['file']
+    ext = os.path.splitext(file.filename)[1].lower()
+    if ext != '.pdf':
+        return jsonify({'error': 'Only PDF files are supported.'}), 400
+
+    job_id = str(uuid.uuid4())
+    job_upload = os.path.join(UPLOAD_DIR, job_id)
+    job_output = os.path.join(OUTPUT_DIR, job_id)
+    os.makedirs(job_upload, exist_ok=True)
+    os.makedirs(job_output, exist_ok=True)
+
+    try:
+        from pdf2docx import Converter
+
+        input_path = os.path.join(job_upload, file.filename)
+        file.save(input_path)
+
+        base_name = os.path.splitext(file.filename)[0] + '.docx'
+        out_path = os.path.join(job_output, base_name)
+
+        cv = Converter(input_path)
+        cv.convert(out_path)
+        cv.close()
+
+        if not os.path.exists(out_path):
+            return jsonify({'error': 'Conversion produced no output.'}), 500
+
+        response = send_file(
+            out_path,
+            mimetype='application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            as_attachment=True,
+            download_name=base_name
+        )
+
+        @response.call_on_close
+        def _cleanup():
+            shutil.rmtree(job_upload, ignore_errors=True)
+            shutil.rmtree(job_output, ignore_errors=True)
+
+        return response
+
+    except Exception as e:
+        shutil.rmtree(job_upload, ignore_errors=True)
+        shutil.rmtree(job_output, ignore_errors=True)
+        return jsonify({'error': str(e)}), 500
+
+
+# ─── PDF to PowerPoint API ───────────────────────────────────────────
+@app.route('/api/pdf-to-pptx', methods=['POST'])
+def api_pdf_to_pptx():
+    if 'file' not in request.files:
+        return jsonify({'error': 'No file uploaded.'}), 400
+
+    file = request.files['file']
+    ext = os.path.splitext(file.filename)[1].lower()
+    if ext != '.pdf':
+        return jsonify({'error': 'Only PDF files are supported.'}), 400
+
+    job_id = str(uuid.uuid4())
+    job_upload = os.path.join(UPLOAD_DIR, job_id)
+    job_output = os.path.join(OUTPUT_DIR, job_id)
+    os.makedirs(job_upload, exist_ok=True)
+    os.makedirs(job_output, exist_ok=True)
+
+    try:
+        from pptx import Presentation
+        from pptx.util import Emu
+
+        input_path = os.path.join(job_upload, file.filename)
+        file.save(input_path)
+
+        # Convert PDF pages to images
+        images = convert_from_path(input_path, dpi=200)
+        if not images:
+            return jsonify({'error': 'Could not extract pages from PDF.'}), 500
+
+        prs = Presentation()
+        for i, img in enumerate(images):
+            img_path = os.path.join(job_upload, f'page_{i+1}.png')
+            img.save(img_path, 'PNG')
+
+            # Set slide dimensions to match the image aspect ratio
+            img_w, img_h = img.size
+            slide_w = Emu(9144000)  # 10 inches in EMU
+            slide_h = Emu(int(9144000 * img_h / img_w))
+            prs.slide_width = slide_w
+            prs.slide_height = slide_h
+
+            slide = prs.slides.add_slide(prs.slide_layouts[6])  # blank layout
+            slide.shapes.add_picture(img_path, Emu(0), Emu(0), slide_w, slide_h)
+
+        base_name = os.path.splitext(file.filename)[0] + '.pptx'
+        out_path = os.path.join(job_output, base_name)
+        prs.save(out_path)
+
+        if not os.path.exists(out_path):
+            return jsonify({'error': 'Conversion produced no output.'}), 500
+
+        response = send_file(
+            out_path,
+            mimetype='application/vnd.openxmlformats-officedocument.presentationml.presentation',
+            as_attachment=True,
+            download_name=base_name
+        )
+
+        @response.call_on_close
+        def _cleanup():
+            shutil.rmtree(job_upload, ignore_errors=True)
+            shutil.rmtree(job_output, ignore_errors=True)
+
+        return response
+
+    except Exception as e:
+        shutil.rmtree(job_upload, ignore_errors=True)
+        shutil.rmtree(job_output, ignore_errors=True)
+        return jsonify({'error': str(e)}), 500
+
+
+# ─── PDF to Excel API ────────────────────────────────────────────────
+@app.route('/api/pdf-to-excel', methods=['POST'])
+def api_pdf_to_excel():
+    if 'file' not in request.files:
+        return jsonify({'error': 'No file uploaded.'}), 400
+
+    file = request.files['file']
+    ext = os.path.splitext(file.filename)[1].lower()
+    if ext != '.pdf':
+        return jsonify({'error': 'Only PDF files are supported.'}), 400
+
+    job_id = str(uuid.uuid4())
+    job_upload = os.path.join(UPLOAD_DIR, job_id)
+    job_output = os.path.join(OUTPUT_DIR, job_id)
+    os.makedirs(job_upload, exist_ok=True)
+    os.makedirs(job_output, exist_ok=True)
+
+    try:
+        import pdfplumber
+        from openpyxl import Workbook
+
+        input_path = os.path.join(job_upload, file.filename)
+        file.save(input_path)
+
+        wb = Workbook()
+        ws = wb.active
+        ws.title = 'Sheet1'
+        row_offset = 1
+
+        with pdfplumber.open(input_path) as pdf:
+            for page_num, page in enumerate(pdf.pages):
+                tables = page.extract_tables()
+                if tables:
+                    for table in tables:
+                        for row in table:
+                            clean_row = [(cell if cell else '') for cell in row]
+                            ws.append(clean_row)
+                        row_offset = ws.max_row + 1
+                else:
+                    # Fallback: extract text line-by-line
+                    text = page.extract_text()
+                    if text:
+                        for line in text.split('\n'):
+                            ws.append([line])
+
+        base_name = os.path.splitext(file.filename)[0] + '.xlsx'
+        out_path = os.path.join(job_output, base_name)
+        wb.save(out_path)
+
+        if not os.path.exists(out_path):
+            return jsonify({'error': 'Conversion produced no output.'}), 500
+
+        response = send_file(
+            out_path,
+            mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            as_attachment=True,
+            download_name=base_name
+        )
+
+        @response.call_on_close
+        def _cleanup():
+            shutil.rmtree(job_upload, ignore_errors=True)
+            shutil.rmtree(job_output, ignore_errors=True)
+
+        return response
+
+    except Exception as e:
+        shutil.rmtree(job_upload, ignore_errors=True)
+        shutil.rmtree(job_output, ignore_errors=True)
+        return jsonify({'error': str(e)}), 500
+
+
+# ─── PDF to CSV API ──────────────────────────────────────────────────
+@app.route('/api/pdf-to-csv', methods=['POST'])
+def api_pdf_to_csv():
+    if 'file' not in request.files:
+        return jsonify({'error': 'No file uploaded.'}), 400
+
+    file = request.files['file']
+    ext = os.path.splitext(file.filename)[1].lower()
+    if ext != '.pdf':
+        return jsonify({'error': 'Only PDF files are supported.'}), 400
+
+    job_id = str(uuid.uuid4())
+    job_upload = os.path.join(UPLOAD_DIR, job_id)
+    job_output = os.path.join(OUTPUT_DIR, job_id)
+    os.makedirs(job_upload, exist_ok=True)
+    os.makedirs(job_output, exist_ok=True)
+
+    try:
+        import pdfplumber
+        import csv
+
+        input_path = os.path.join(job_upload, file.filename)
+        file.save(input_path)
+
+        base_name = os.path.splitext(file.filename)[0] + '.csv'
+        out_path = os.path.join(job_output, base_name)
+
+        with pdfplumber.open(input_path) as pdf:
+            with open(out_path, 'w', newline='', encoding='utf-8') as f:
+                writer = csv.writer(f)
+                for page in pdf.pages:
+                    tables = page.extract_tables()
+                    if tables:
+                        for table in tables:
+                            for row in table:
+                                clean_row = [(cell if cell else '') for cell in row]
+                                writer.writerow(clean_row)
+                    else:
+                        # Fallback: extract text line-by-line
+                        text = page.extract_text()
+                        if text:
+                            for line in text.split('\n'):
+                                writer.writerow([line])
+
+        if not os.path.exists(out_path) or os.path.getsize(out_path) == 0:
+            return jsonify({'error': 'No data could be extracted from the PDF.'}), 500
+
+        response = send_file(
+            out_path,
+            mimetype='text/csv',
+            as_attachment=True,
+            download_name=base_name
         )
 
         @response.call_on_close

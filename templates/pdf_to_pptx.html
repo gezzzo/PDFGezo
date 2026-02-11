@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+
+{% block title %}PDF to PowerPoint — PDFGezo{% endblock %}
+
+{% block content %}
+<section class="tool-hero">
+    <div class="container">
+        <h1 class="tool-hero-title">
+            <span class="gradient-text">PDF to PowerPoint</span>
+        </h1>
+        <p class="tool-hero-subtitle">Convert your PDF files to PowerPoint presentations (.pptx).</p>
+    </div>
+</section>
+
+<section class="tool-workspace">
+    <div class="container">
+        <div class="workspace-card" id="workspace-pdf2pptx">
+
+            <div class="step step-upload active" id="pdf2pptx-step-upload">
+                <div class="dropzone" id="pdf2pptx-dropzone">
+                    <div class="dropzone-content">
+                        <svg class="dropzone-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="2" y="3" width="20" height="14" rx="2" />
+                            <path d="M8 21h8" />
+                            <path d="M12 17v4" />
+                        </svg>
+                        <p class="dropzone-text">Drag & drop your PDF here</p>
+                        <p class="dropzone-hint">or</p>
+                        <label class="btn btn-primary" for="pdf2pptxFileInput" id="pdf2pptxSelectBtn">
+                            Select PDF File
+                        </label>
+                        <input type="file" id="pdf2pptxFileInput" accept=".pdf" hidden>
+                        <p class="dropzone-limit">.PDF · Max 50 MB</p>
+                    </div>
+                </div>
+
+                <div class="file-info" id="pdf2pptxFileInfo" style="display:none;">
+                    <div class="file-info-details">
+                        <svg class="file-info-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="1.5">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                            <polyline points="14 2 14 8 20 8" />
+                        </svg>
+                        <div>
+                            <p class="file-name" id="pdf2pptxFileName"></p>
+                            <p class="file-size" id="pdf2pptxFileSize"></p>
+                        </div>
+                    </div>
+                    <button class="file-remove" id="pdf2pptxRemoveFile" title="Remove">&times;</button>
+                </div>
+
+                <button class="btn btn-convert" id="pdf2pptxBtn" style="display:none;">
+                    <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="2" y="3" width="20" height="14" rx="2" />
+                        <path d="M8 21h8" />
+                        <path d="M12 17v4" />
+                    </svg>
+                    Convert to PowerPoint
+                </button>
+            </div>
+
+            <div class="step step-processing" id="pdf2pptx-step-processing">
+                <div class="processing-content">
+                    <div class="spinner"></div>
+                    <p class="processing-text">Converting PDF to PowerPoint…</p>
+                    <div class="progress-bar-wrap">
+                        <div class="progress-bar" id="pdf2pptxProgressBar"></div>
+                    </div>
+                    <p class="progress-text" id="pdf2pptxProgressText">Uploading…</p>
+                </div>
+            </div>
+
+            <div class="step step-done" id="pdf2pptx-step-done">
+                <div class="done-content">
+                    <div class="done-check">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+                            stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="20 6 9 17 4 12" />
+                        </svg>
+                    </div>
+                    <h2 class="done-title">Your PowerPoint is ready!</h2>
+                    <p class="done-desc">Your PDF has been converted to a PowerPoint presentation.</p>
+                    <a class="btn btn-download" id="pdf2pptxDownloadBtn" href="#" download>
+                        <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                            stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                            <polyline points="7 10 12 15 17 10" />
+                            <line x1="12" y1="15" x2="12" y2="3" />
+                        </svg>
+                        Download PowerPoint
+                    </a>
+                    <button class="btn btn-outline" id="pdf2pptxAnotherBtn">Convert Another File</button>
+                </div>
+            </div>
+
+            <div class="step step-error" id="pdf2pptx-step-error">
+                <div class="error-content">
+                    <div class="error-icon">⚠️</div>
+                    <h2 class="error-title">Something went wrong</h2>
+                    <p class="error-desc" id="pdf2pptxErrorText">An unexpected error occurred.</p>
+                    <button class="btn btn-primary" id="pdf2pptxTryAgainBtn">Try Again</button>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</section>
+{% endblock %}
