@@ -57,20 +57,6 @@ Free online PDF toolkit built with **Python Flask**. Convert, split, merge, and 
 - [Ghostscript](https://www.ghostscript.com/) (for Compress PDF)
 - [LibreOffice](https://www.libreoffice.org/) (for Word/PowerPoint/Excel/HTML/CSV to PDF)
 
-**macOS (Homebrew):**
-```bash
-brew install poppler ghostscript
-brew install --cask libreoffice
-```
-**Linux (Ubuntu/Debian):**
-```bash
-sudo apt update && sudo apt upgrade -y
-sudo apt install poppler-utils ghostscript libreoffice -y
-```
-**Windows (Chocolatey):**
-```bash
-choco install poppler ghostscript libreoffice
-```
 
 ### Quick Start with Docker (Recommended)
 
@@ -93,6 +79,21 @@ docker compose down
 ```
 
 ### Manual Installation
+
+**macOS (Homebrew):**
+```bash
+brew install poppler ghostscript
+brew install --cask libreoffice
+```
+**Linux (Ubuntu/Debian):**
+```bash
+sudo apt update && sudo apt upgrade -y
+sudo apt install poppler-utils ghostscript libreoffice -y
+```
+**Windows (Chocolatey):**
+```bash
+choco install poppler ghostscript libreoffice
+```
 
 ```bash
 # Clone the repo
