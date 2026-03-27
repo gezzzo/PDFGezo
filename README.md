@@ -72,7 +72,27 @@ sudo apt install poppler-utils ghostscript libreoffice -y
 choco install poppler ghostscript libreoffice
 ```
 
-### Installation
+### Quick Start with Docker (Recommended)
+
+The easiest way to run PDFGezo with all dependencies:
+
+```bash
+# Clone the repo
+git clone https://github.com/gezzzo/PDFGezo.git
+cd PDFGezo
+
+# Build and run
+docker compose up -d
+```
+
+The app will be available at **http://localhost:5000**
+
+To stop:
+```bash
+docker compose down
+```
+
+### Manual Installation
 
 ```bash
 # Clone the repo

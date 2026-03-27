@@ -1,0 +1,12 @@
+services:
+  pdfgezo:
+    build: .
+    container_name: pdfgezo
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./uploads:/app/uploads
+      - ./outputs:/app/outputs
+    restart: unless-stopped
+    environment:
+      - FLASK_ENV=production

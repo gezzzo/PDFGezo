@@ -1,0 +1,17 @@
+venv/
+__pycache__/
+*.pyc
+*.pyo
+.git/
+.gitignore
+.DS_Store
+.vscode/
+.idea/
+uploads/
+outputs/
+*.egg-info/
+dist/
+build/
+.env
+LICENSE
+README.md
